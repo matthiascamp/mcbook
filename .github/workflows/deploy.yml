@@ -1,0 +1,41 @@
+name: Deploy to matthiasdev
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mcbook repo
+        uses: actions/checkout@v4
+
+      - name: Checkout matthiasdev repo
+        uses: actions/checkout@v4
+        with:
+          repository: matthiascamp/matthiasdev
+          token: ${{ secrets.DEPLOY_TOKEN }}
+          path: matthiasdev
+
+      - name: Sync files into mcbook/
+        run: |
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='CLAUDE.md' \
+            mcbook/           matthiasdev/mcbook/
+          rsync -av --delete \
+            "site photos/"    "matthiasdev/site photos/"
+          cp schema.sql       matthiasdev/schema.sql
+          rsync -av --delete \
+            supabase/         matthiasdev/supabase/
+
+      - name: Commit and push to matthiasdev
+        run: |
+          cd matthiasdev
+          git config user.name  "MCBook Deploy"
+          git config user.email "deploy@mcbook"
+          git add -A
+          git diff --staged --quiet || git commit -m "Deploy from mcbook repo @ ${{ github.sha }}"
+          git push
