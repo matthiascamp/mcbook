@@ -1149,7 +1149,7 @@
           </div>
           <div class="bw-field">
             <label>Phone Number</label>
-            <input type="tel" id="bw-phone" placeholder="+1 (555) 000-0000"
+            <input type="tel" id="bw-phone" placeholder="04XX XXX XXX"
               value="${c.phone || ''}">
           </div>
         </div>
@@ -1369,9 +1369,9 @@
         // Validate contact fields
         const name  = this.root.querySelector('#bw-name').value.trim();
         const email = this.root.querySelector('#bw-email').value.trim();
-        const phone = this.root.querySelector('#bw-phone').value.trim();
+        const rawPhone = this.root.querySelector('#bw-phone').value.trim();
         const errEl = this.root.querySelector('#bw-contact-err');
-        if (!name || !email || !phone) {
+        if (!name || !email || !rawPhone) {
           errEl.textContent = 'Please fill in all fields.';
           errEl.classList.add('visible');
           return;
@@ -1381,6 +1381,11 @@
           errEl.classList.add('visible');
           return;
         }
+        // Normalise phone to E.164: 04XXXXXXXX → +614XXXXXXXX
+        let phone = rawPhone.replace(/[\s\-\(\)]/g, '');
+        if (/^04\d{8}$/.test(phone)) phone = '+61' + phone.slice(1);
+        else if (/^4\d{8}$/.test(phone)) phone = '+61' + phone;
+        else if (/^614\d{8}$/.test(phone)) phone = '+' + phone;
         this.state.contact = { name, email, phone };
       }
 
