@@ -1,0 +1,126 @@
+MCBook — Changes Made & Setup Required
+========================================
+Date: 2026-04-08
+
+
+DEPLOYMENT
+──────────
+matthiasdev.com/mcbook is now LIVE (200 OK).
+The deploy workflow syncs this repo to matthiascamp/matthiasdev on every push.
+The mcbook folder was previously deleted from matthiasdev manually — this push
+re-deployed it.
+
+
+BUGS FIXED
+──────────
+1. Double-booking prevention
+   The "Book" button now blocks re-submission while processing.
+   Rapid double-clicks can no longer create two identical bookings.
+
+2. Slots cut off when service runs past closing time
+   A 2-hour service no longer appears at 5:30 PM if you close at 6:30 PM.
+   The slot generator now filters out any slot where service duration
+   would push the finish time past your configured closing time.
+
+3. No-show charge button stuck on network error
+   If the "No-show + Charge" call fails (network drop, timeout), the button
+   now re-enables and shows an error message. Previously it stayed disabled.
+
+4. No-show charge rejected pending_payment bookings
+   The charge-noshow function now accepts both 'scheduled' and 'pending_payment'
+   statuses, so all chargeable bookings can be actioned.
+
+5. Duplicate customer on concurrent bookings
+   Two simultaneous bookings from the same email can no longer crash.
+   The widget detects the unique constraint conflict and retries correctly.
+
+6. Email format validation
+   The contact form now rejects inputs like "notanemail" before proceeding.
+
+7. Misleading confirmation text
+   Step 6 now says "SMS confirmation sent to [phone]" instead of the
+   incorrect "confirmation sent to your email".
+
+
+NEW: SMS CONFIRMATIONS & REMINDERS
+────────────────────────────────────
+Three new Supabase Edge Functions + one new page:
+
+confirm-booking     Sends SMS when a booking is created
+                    "Hi [Name]! [Service] at [Business] confirmed.
+                     📅 [Date] at [Time]
+                     To cancel: matthiasdev.com/mcbook/cancel.html?id=..."
+
+cancel-booking      Public endpoint called by the cancel page.
+                    Looks up booking by UUID, marks it cancelled if eligible.
+
+send-reminders      Sends 24h-ahead reminder SMS to all customers with
+                    bookings tomorrow. Runs via GitHub Actions cron.
+
+cancel.html         Customer-facing page (no login needed).
+                    Shows booking details + "Cancel my booking" button.
+                    Linked from both the confirmation and reminder SMS.
+
+
+DATABASE MIGRATION — RUN THIS NOW
+──────────────────────────────────
+Open Supabase → SQL editor → paste and run the contents of migration.sql:
+
+  CREATE UNIQUE INDEX IF NOT EXISTS customers_client_email_unique
+    ON customers(client_id, email);
+
+  CREATE INDEX IF NOT EXISTS bookings_date_idx ON bookings(date);
+  CREATE INDEX IF NOT EXISTS bookings_status_idx ON bookings(status);
+
+
+SETUP REQUIRED BEFORE SMS WORKS
+─────────────────────────────────
+STEP 1 — Create a Twilio account (twilio.com)
+  • Get a Twilio phone number that supports SMS
+  • Note your: Account SID, Auth Token, Phone Number (E.164 format)
+
+STEP 2 — Add secrets to Supabase
+  Supabase project → Settings → Edge Functions → Secrets:
+    TWILIO_ACCOUNT_SID   = ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    TWILIO_AUTH_TOKEN    = your_auth_token
+    TWILIO_FROM_NUMBER   = +61xxxxxxxxx
+    CRON_SECRET          = any_long_random_string_you_choose
+
+STEP 3 — Add CRON_SECRET to GitHub
+  GitHub → matthiascamp/mcbook → Settings → Secrets → Actions:
+    CRON_SECRET = same_string_as_above
+
+STEP 4 — Deploy the new edge functions (requires Supabase CLI)
+  supabase functions deploy confirm-booking --no-verify-jwt
+  supabase functions deploy cancel-booking  --no-verify-jwt
+  supabase functions deploy send-reminders  --no-verify-jwt
+
+STEP 5 — Test
+  • Make a test booking using a real phone number
+  • You should receive an SMS within seconds
+  • Click the cancel link in the SMS — the page should load and cancel works
+  • Optional: trigger reminders manually via GitHub → Actions →
+    "SMS Appointment Reminders" → Run workflow
+
+
+CRON SCHEDULE FOR REMINDERS
+─────────────────────────────
+File: .github/workflows/sms-reminders.yml
+Currently set to: 10 PM UTC = 8 AM AEST
+
+To adjust for your timezone, change the cron line:
+  '0 22 * * *'   → '0 [UTC_HOUR] * * *'
+
+Examples:
+  AEST (UTC+10) 8 AM: cron '0 22 * * *'   (already set)
+  NZST (UTC+13) 8 AM: cron '0 19 * * *'
+  EST  (UTC-5)  8 AM: cron '0 13 * * *'
+
+
+OUTSTANDING (not fixed in this update)
+────────────────────────────────────────
+• Refund UI: owners must use Stripe dashboard directly
+• Timezones: all times stored in UTC; display may appear off for non-UTC owners
+• Cancellation deadline: no "must cancel 24h before" policy yet
+• Admin auth: still email-string-comparison; acceptable for single admin
+• Stripe idempotency keys: could add to prevent duplicate charges on retry
