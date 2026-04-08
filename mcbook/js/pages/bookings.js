@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   })
 
   // Status filter
-  const STATUS_MAP = { 'Scheduled': 'scheduled', 'Completed': 'completed', 'No-show': 'noshow' }
+  const STATUS_MAP = { 'Scheduled': 'scheduled', 'Completed': 'completed', 'No-show': 'no_show' }
   statusSelect?.addEventListener('change', () => {
     statusFilter = STATUS_MAP[statusSelect.value] ?? ''
     currentPage = 1; loadBookings()

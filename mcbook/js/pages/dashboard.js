@@ -26,7 +26,10 @@ function fmtTime(t) {
 function fmtMoney(n) {
   return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
-function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
+function statusLabel(s) {
+  if (s === 'pending_payment') return 'Scheduled'
+  return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
 function statCard(label) {
   return [...document.querySelectorAll('.stat-card')]
     .find(c => c.querySelector('.stat-card-label')?.textContent.trim() === label)
@@ -65,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     supabase.from('bookings').select('services(price)')
       .eq('client_id', uid).gte('date', monthStartISO()).neq('status', 'cancelled'),
     supabase.from('bookings').select('id, payments(amount)')
-      .eq('client_id', uid).eq('status', 'noshow').gte('date', monthStartISO())
+      .eq('client_id', uid).eq('status', 'no_show').gte('date', monthStartISO())
   ])
 
   // Today's Bookings
@@ -126,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="booking-name">${name}</div>
           <div class="booking-service">${b.services?.name ?? ''} · ${b.services?.duration_mins ?? ''} min</div>
         </div>
-        <span class="status-pill ${b.status}">${capitalize(b.status)}</span>
+        <span class="status-pill ${b.status}">${statusLabel(b.status)}</span>
       `
       schedPanel.appendChild(el)
     }
@@ -164,7 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="upcoming-name">${b.customers?.name ?? ''}</div>
             <div class="upcoming-meta">${b.services?.name ?? ''} · ${fmtTime(b.time)}</div>
           </div>
-          <span class="status-pill ${b.status}">${capitalize(b.status)}</span>
+          <span class="status-pill ${b.status}">${statusLabel(b.status)}</span>
         `
         upPanel.appendChild(el)
       }
@@ -233,7 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               <div class="booking-name">${name}</div>
               <div class="booking-service">${b.services?.name ?? ''} · ${b.services?.duration_mins ?? ''} min</div>
             </div>
-            <span class="status-pill ${b.status}">${capitalize(b.status)}</span>
+            <span class="status-pill ${b.status}">${statusLabel(b.status)}</span>
           `
           const header = schedPanel.querySelector('.panel-header')
           if (header) header.after(el)
@@ -261,7 +264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const pill = el.querySelector('.status-pill')
       if (pill) {
         pill.className = `status-pill ${payload.new.status}`
-        pill.textContent = capitalize(payload.new.status)
+        pill.textContent = statusLabel(payload.new.status)
       }
     }
 

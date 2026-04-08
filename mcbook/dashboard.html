@@ -157,7 +157,7 @@
     .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: -0.02em; }
     .topbar-actions { display: flex; align-items: center; gap: 14px; }
     .topbar-date { font-size: 0.78rem; color: var(--text-2); }
-    .topbar-badge { position: relative; cursor: pointer; color: var(--text-2); font-size: 1.05rem; }
+    .topbar-badge { display: none; }
     .topbar-badge-dot {
       position: absolute; top: -2px; right: -2px;
       width: 7px; height: 7px;
@@ -274,10 +274,12 @@
       padding: 2px 9px; border-radius: 20px; flex-shrink: 0;
       letter-spacing: 0.02em; border: 1px solid transparent;
     }
-    .status-pill.scheduled { background: var(--accent-bg);           color: var(--accent);  border-color: rgba(74,222,128,0.2); }
-    .status-pill.completed { background: rgba(139,139,158,0.08);     color: var(--text-2);  border-color: rgba(139,139,158,0.15); }
-    .status-pill.noshow    { background: rgba(245,158,11,0.08);      color: var(--warning); border-color: rgba(245,158,11,0.2); }
-    .status-pill.cancelled { background: rgba(239,68,68,0.08);       color: var(--danger);  border-color: rgba(239,68,68,0.2); }
+    .status-pill.scheduled,
+    .status-pill.pending_payment { background: var(--accent-bg);           color: var(--accent);  border-color: rgba(74,222,128,0.2); }
+    .status-pill.completed       { background: rgba(139,139,158,0.08);     color: var(--text-2);  border-color: rgba(139,139,158,0.15); }
+    .status-pill.noshow,
+    .status-pill.no_show         { background: rgba(245,158,11,0.08);      color: var(--warning); border-color: rgba(245,158,11,0.2); }
+    .status-pill.cancelled       { background: rgba(239,68,68,0.08);       color: var(--danger);  border-color: rgba(239,68,68,0.2); }
 
     /* Upcoming items */
     .upcoming-item {
@@ -394,7 +396,6 @@
       <span class="topbar-title">Dashboard</span>
       <div class="topbar-actions">
         <span class="topbar-date">Monday, 7 April 2025</span>
-        <span class="topbar-badge">&#128276;<span class="topbar-badge-dot"></span></span>
       </div>
     </header>
 

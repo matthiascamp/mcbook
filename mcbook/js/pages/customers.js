@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     tbody.innerHTML = ''
     ;(customers ?? []).forEach((c, i) => {
       const bookingCount = (c.bookings ?? []).filter(b => b.status !== 'cancelled').length
-      const noshowCount  = (c.bookings ?? []).filter(b => b.status === 'noshow').length
+      const noshowCount  = (c.bookings ?? []).filter(b => b.status === 'no_show').length
       const since = new Date(c.created_at)
       const tr = document.createElement('tr')
       tr.innerHTML = `
