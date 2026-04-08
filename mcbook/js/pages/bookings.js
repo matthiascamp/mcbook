@@ -85,7 +85,7 @@ async function loadBookings() {
       <td>
         <div class="row-actions">
           ${isChargeable ? `<button class="btn-noshow" ${isScheduled ? '' : 'disabled'}>No-show + Charge</button>` : ''}
-          <button class="btn-waive" ${isScheduled ? '' : 'disabled'}>Waive No-show</button>
+          ${isChargeable ? `<button class="btn-waive" ${isScheduled ? '' : 'disabled'}>Waive No-show</button>` : ''}
           <button class="btn-cancel" ${isScheduled ? '' : 'disabled'}>Cancel</button>
           <button class="btn-view">View</button>
         </div>
@@ -155,6 +155,7 @@ async function loadCancelled() {
     const name = b.customers?.name ?? ''
     const tr = document.createElement('tr')
     tr.style.opacity = '0.6'
+    tr.dataset.bookingId = b.id
     tr.innerHTML = `
       <td>
         <div class="customer-cell">
@@ -287,6 +288,85 @@ async function markNoshow(bookingId, buttonEl) {
   }
 }
 
+function openModal(html) {
+  document.getElementById('modal-body').innerHTML = html
+  document.getElementById('booking-modal').classList.add('open')
+}
+
+function closeModal() {
+  document.getElementById('booking-modal').classList.remove('open')
+}
+
+async function viewBooking(bookingId) {
+  openModal('<div class="modal-loading">Loading\u2026</div>')
+
+  const { data: b, error } = await supabase
+    .from('bookings')
+    .select('id, date, time, status, payment_status, customers(name, email, phone), services(name, duration_mins, price, noshow_fee, payment_mode)')
+    .eq('id', bookingId)
+    .single()
+
+  if (error || !b) {
+    openModal('<div class="modal-loading">Could not load booking details.</div>')
+    return
+  }
+
+  const customer = b.customers ?? {}
+  const service  = b.services  ?? {}
+  const ref      = 'BK-' + b.id.slice(0, 6).toUpperCase()
+
+  const payModeLabel = {
+    free:        'Pay externally (no card)',
+    noshow_only: 'Card on file — no-show fee only',
+    after:       'Card on file — charged after appointment',
+    upfront:     'Paid upfront',
+  }[service.payment_mode] ?? service.payment_mode ?? '—'
+
+  const payStatusLabel = b.payment_status
+    ? b.payment_status.charAt(0).toUpperCase() + b.payment_status.slice(1)
+    : '—'
+
+  const duration = service.duration_mins
+    ? (service.duration_mins < 60 ? `${service.duration_mins} min` : `${service.duration_mins / 60} hr`)
+    : '—'
+
+  const statusLabel = b.status === 'pending_payment' ? 'Scheduled' : capitalize(b.status.replace('_', ' '))
+  const statusCls   = b.status === 'pending_payment' ? 'scheduled' : b.status
+
+  document.getElementById('modal-title').textContent = `Booking — ${customer.name || 'Unknown'}`
+
+  openModal(`
+    <div class="modal-section">
+      <div class="modal-section-title">Customer</div>
+      <div class="modal-row"><span class="modal-label">Name</span><span class="modal-val">${esc(customer.name || '—')}</span></div>
+      <div class="modal-row"><span class="modal-label">Email</span><span class="modal-val">${esc(customer.email || '—')}</span></div>
+      <div class="modal-row"><span class="modal-label">Phone</span><span class="modal-val">${esc(customer.phone || '—')}</span></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Appointment</div>
+      <div class="modal-row"><span class="modal-label">Service</span><span class="modal-val">${esc(service.name || '—')}</span></div>
+      <div class="modal-row"><span class="modal-label">Date</span><span class="modal-val">${fmtDate(b.date)}</span></div>
+      <div class="modal-row"><span class="modal-label">Time</span><span class="modal-val">${fmtTime(b.time)}</span></div>
+      <div class="modal-row"><span class="modal-label">Duration</span><span class="modal-val">${duration}</span></div>
+      <div class="modal-row"><span class="modal-label">Status</span><span class="modal-val"><span class="status-pill ${statusCls}">${statusLabel}</span></span></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Payment</div>
+      <div class="modal-row"><span class="modal-label">Mode</span><span class="modal-val">${esc(payModeLabel)}</span></div>
+      ${service.price ? `<div class="modal-row"><span class="modal-label">Price</span><span class="modal-val">$${service.price}</span></div>` : ''}
+      ${service.noshow_fee && service.payment_mode !== 'free' ? `<div class="modal-row"><span class="modal-label">No-show fee</span><span class="modal-val">$${service.noshow_fee}</span></div>` : ''}
+      <div class="modal-row"><span class="modal-label">Payment status</span><span class="modal-val">${payStatusLabel}</span></div>
+    </div>
+    <div style="text-align:center;padding-top:4px;">
+      <span class="modal-ref">${ref}</span>
+    </div>
+  `)
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   const session = await getSession()
@@ -328,7 +408,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentPage = 1; loadBookings()
   })
 
-  // Mark no-show / waive / cancel (delegated on tbody)
+  // Delegated click handler — active bookings table
   document.querySelector('.data-table tbody')?.addEventListener('click', e => {
     const noShowBtn = e.target.closest('.btn-noshow')
     if (noShowBtn && !noShowBtn.disabled) {
@@ -346,7 +426,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (cancelBtn && !cancelBtn.disabled) {
       const id = cancelBtn.closest('tr')?.dataset.bookingId
       if (id) cancelBooking(id, cancelBtn)
+      return
     }
+    const viewBtn = e.target.closest('.btn-view')
+    if (viewBtn) {
+      const id = viewBtn.closest('tr')?.dataset.bookingId
+      if (id) viewBooking(id)
+    }
+  })
+
+  // Delegated click handler — cancelled bookings table
+  document.getElementById('cancelled-tbody')?.addEventListener('click', e => {
+    const viewBtn = e.target.closest('.btn-view')
+    if (viewBtn) {
+      const id = viewBtn.closest('tr')?.dataset.bookingId
+      if (id) viewBooking(id)
+    }
+  })
+
+  // Modal close
+  document.getElementById('modal-close')?.addEventListener('click', closeModal)
+  document.getElementById('booking-modal')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal()
+  })
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal()
   })
 
   // Cancelled section — fetch count eagerly, load rows lazily on expand

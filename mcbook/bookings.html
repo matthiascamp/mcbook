@@ -269,6 +269,62 @@
     }
     .btn-view:hover { border-color: var(--accent); color: var(--accent); }
 
+    /* ── Booking detail modal ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(3px);
+      z-index: 300;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .modal-title { font-size: 0.9rem; font-weight: 700; }
+    .modal-close {
+      width: 28px; height: 28px;
+      background: transparent; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-2); font-size: 1rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: border-color var(--ease), color var(--ease);
+    }
+    .modal-close:hover { border-color: var(--accent); color: var(--accent); }
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .modal-section-title {
+      font-size: 0.65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-2); margin-bottom: 8px;
+    }
+    .modal-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      font-size: 0.84rem; padding: 5px 0;
+    }
+    .modal-row:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .modal-label { color: var(--text-2); flex-shrink: 0; margin-right: 12px; }
+    .modal-val { font-weight: 500; text-align: right; word-break: break-word; }
+    .modal-section {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+    .modal-ref {
+      font-size: 0.72rem; font-weight: 700;
+      color: var(--accent); letter-spacing: 0.1em;
+    }
+    .modal-loading { text-align: center; padding: 32px; color: var(--text-2); font-size: 0.85rem; }
+
     /* Pagination */
     .pagination {
       display: flex; align-items: center; justify-content: space-between;
@@ -442,6 +498,19 @@
       </div>
 
     </main>
+  </div>
+
+  <!-- Booking detail modal -->
+  <div class="modal-backdrop" id="booking-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Booking Details</span>
+        <button class="modal-close" id="modal-close" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <div class="modal-loading">Loading…</div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="./js/pages/bookings.js"></script>
