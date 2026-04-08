@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book — MCBook</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0a0a0f;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    // Read business ID from ?id= URL param, fall back to 123 for raw demo
+    const id = new URLSearchParams(window.location.search).get('id') || '123'
+    const s  = document.createElement('script')
+    s.src    = 'widget.js'
+    s.setAttribute('data-business-id', id)
+    document.body.appendChild(s)
+  </script>
+</body>
+</html>

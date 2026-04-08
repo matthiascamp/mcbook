@@ -1,0 +1,320 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    McBook — Stripe Connect Setup Guide                     ║
+║                         Last updated: 7 April 2026                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Project:   McBook (matthiasdev.com)
+Backend:   Supabase (uijudgnqawtvjyjuyuwo.supabase.co)
+Mode:      TEST (swap to live keys when ready to take real payments)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STRIPE ACCOUNT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Platform account ID:  acct_1TIM7l3td247MyPL
+Business name:        MC FILE HOSTING sandbox
+Mode:                 TEST
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT WAS COMPLETED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Stripe Connect enabled and platform profile acknowledged in Stripe Dashboard
+✓ Connect Platform Agreement confirmed (Stripe → Connect → Settings)
+✓ Loss liability set to 'application' — McBook is responsible for seller chargebacks
+✓ Two webhooks registered in Stripe via stripe-setup.js script
+✓ Four Edge Functions written and deployed to Supabase
+✓ Three new DB columns added (clients, bookings, payments tables)
+✓ Platform fee set to 3% on all booking payments
+✓ Seller onboarding page built (stripe-onboarding.html)
+✓ Post-onboarding return and link-refresh pages built
+✓ Restricted/incomplete account detection and resume flow built
+✓ Widget embed page built (embed.html) with copy button and install guide
+✓ Widget widened to min(90vw, 680px) — responsive
+✓ Widget preview wired to real business ID via ?id= URL param
+✓ Payouts + Widget nav links added to all dashboard pages
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISSUES HIT DURING SETUP & HOW THEY WERE FIXED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. "Please review responsibilities of managing losses"
+   Cause:  Stripe platform profile not confirmed before making API calls.
+   Fix:    Confirmed Connect Platform Agreement in Stripe Dashboard → Connect
+           → Settings. Also switched account creation from `type: 'express'`
+           to the `controller` API object to explicitly declare loss liability
+           in the API call itself.
+
+2. "With a dashboard type of express, the Connect application must control losses"
+   Cause:  Initially set `losses: { payments: 'stripe' }` — not allowed for Express.
+   Fix:    Changed to `losses: { payments: 'application' }`. This means McBook
+           is responsible for negative balances on connected accounts.
+
+3. "Livemode requests must always be redirected via HTTPS"
+   Cause:  Local LiveServer runs on http://, so redirect URLs sent to Stripe
+           were http://127.0.0.1:5502/... which Stripe rejects.
+   Fix:    Edge Function now checks if origin is HTTPS. If not, falls back to
+           https://matthiasdev.com for the refresh_url and return_url.
+
+4. Restricted accounts showing as "Verification in progress"
+   Cause:  Status detection only checked `disabled_reason` and `past_due`.
+           Controller-based accounts also use `currently_due` and `eventually_due`.
+   Fix:    Updated verify-connect-account to check all three requirement fields.
+           Also added debug logging to Edge Function and console.log on frontend
+           to surface the raw Stripe API response for easier debugging.
+
+5. Stripe hosted onboarding is required (can't stay fully on McBook site)
+   Cause:  Express Connect always requires Stripe's hosted KYC flow for identity
+           verification, ToS acceptance, and bank account verification. There is
+           no way around this with Express accounts.
+   Note:   McBook pre-fills name, DOB, and address to minimise what the seller
+           sees on Stripe's form. Bank details (BSB + account number) are added
+           to the Stripe account via a separate API call after account creation.
+           If you want fully on-site onboarding, you would need Stripe Connect
+           Custom — which requires building your own KYC flow and carries heavy
+           compliance obligations.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WEBHOOKS (registered in Stripe)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Both webhooks point to:
+   https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/stripe-webhook
+
+── Platform webhook (events on YOUR account) ──────────────────────────────
+   ID:      we_1TJTWK3td247MyPL62mXlrWH
+   Secret:  whsec_vIfqDg1erZvaBDJ56S1PQ7xEXoLmM8Uo  → STRIPE_WEBHOOK_SECRET
+   Events:  payment_intent.succeeded, payment_intent.payment_failed,
+            charge.refunded, payout.paid, payout.failed
+
+── Connect webhook (events on SELLER accounts) ─────────────────────────────
+   ID:      we_1TJTWL3td247MyPLKUGi0eR7
+   Secret:  whsec_8cPo2rH4QSUmdgFVgcVSlpTyWM8LlkCy  → STRIPE_CONNECT_SECRET
+   Events:  account.updated, payout.paid, payout.failed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUPABASE EDGE FUNCTIONS (deployed)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+create-connect-account    — creates a Stripe Connect account for a seller using
+                            the controller API (Express-equivalent). Pre-fills
+                            name/DOB/address. Adds bank account (BSB + account
+                            number) as a separate API call after creation.
+                            Returns a Stripe-hosted onboarding URL.
+                            If seller already has an account, just returns a
+                            fresh onboarding link (used by resume flow).
+
+create-payment-intent     — creates a Stripe PaymentIntent for a customer booking.
+                            Routes funds to seller's connected account via
+                            transfer_data.destination. Deducts 3% platform fee
+                            via application_fee_amount. Saves PaymentIntent ID
+                            to the bookings table.
+
+stripe-webhook            — verifies Stripe webhook signatures (tries both
+                            STRIPE_WEBHOOK_SECRET and STRIPE_CONNECT_SECRET).
+                            Handles: payment_intent.succeeded,
+                            payment_intent.payment_failed, charge.refunded,
+                            account.updated, payout.paid, payout.failed.
+
+verify-connect-account    — fetches live account data from Stripe API.
+                            Checks currently_due, past_due, eventually_due,
+                            and disabled_reason to determine status.
+                            Generates an Express dashboard login link if enabled.
+                            Syncs status back to Supabase clients table.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUPABASE SECRETS (Settings → Edge Functions → Secrets)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STRIPE_SECRET_KEY        sk_test_51TIM7l... (your Stripe secret key)
+STRIPE_WEBHOOK_SECRET    whsec_vIfqDg1erZvaBDJ56S1PQ7xEXoLmM8Uo
+STRIPE_CONNECT_SECRET    whsec_8cPo2rH4QSUmdgFVgcVSlpTyWM8LlkCy
+PLATFORM_FEE_PERCENT     3
+
+Note: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set automatically by Supabase.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATABASE CHANGES (applied via Supabase SQL Editor)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ALTER TABLE clients
+  ADD COLUMN stripe_account_id      text,
+  ADD COLUMN stripe_account_status  text    DEFAULT 'none',
+  ADD COLUMN stripe_charges_enabled boolean DEFAULT false,
+  ADD COLUMN stripe_payouts_enabled boolean DEFAULT false;
+
+ALTER TABLE bookings
+  ADD COLUMN stripe_payment_intent_id text,
+  ADD COLUMN payment_status           text DEFAULT 'unpaid';
+
+ALTER TABLE payments
+  ADD COLUMN type text;
+  -- values: 'booking_payment' | 'noshow_fee' | 'refund' | 'payout'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOW IT ALL WORKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SELLER ONBOARDING:
+  1. Seller logs into McBook → clicks Payouts in sidebar
+  2. If no account: fills in form (name, DOB, address, BSB, account number)
+  3. create-connect-account Edge Function creates Stripe account + bank account
+  4. Seller redirected to Stripe-hosted onboarding (identity verification, ToS)
+     NOTE: This step cannot be skipped with Express accounts — Stripe requires it
+  5. Seller returns to stripe-return.html → status shown
+  6. If incomplete (restricted): resume button shown → generates fresh Stripe link
+  7. Once verified: account.updated webhook fires → status set to 'enabled'
+  8. Bank details are NEVER stored in McBook — Stripe holds everything securely
+
+CUSTOMER PAYMENT:
+  1. Customer books via widget → create-payment-intent called
+  2. PaymentIntent created: full amount charged, 3% kept by platform, rest to seller
+  3. payment_intent.succeeded webhook → booking marked as paid in Supabase
+  4. Stripe pays seller's bank automatically each day
+
+REFUNDS:
+  1. Refund issued via Stripe Dashboard
+  2. charge.refunded webhook → booking marked cancelled + refunded
+
+SELLER PAYOUTS:
+  1. Automatic daily schedule — no action needed from seller
+  2. payout.paid webhook → logged in payments table
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGES CREATED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+mcbook/stripe-onboarding.html   Seller payout setup — form, status banner,
+                                 resume button for incomplete accounts
+mcbook/stripe-return.html        Shown after Stripe redirects seller back —
+                                 shows enabled/pending/restricted status
+mcbook/stripe-refresh.html       Auto-regenerates expired Stripe onboarding links
+mcbook/embed.html                Widget embed page — shows client's snippet
+                                 with real business ID, copy button, install guide
+mcbook/widget-demo.html          Stripped to just the widget box. Accepts ?id=
+                                 param so preview link passes real business ID.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GOING LIVE (when ready)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Switch Stripe Dashboard to Live mode
+2. Get sk_live_... key from Developers → API Keys
+3. Run: node stripe-setup.js sk_live_YOUR_KEY_HERE
+   (registers new live webhooks and prints new whsec_ secrets)
+4. Update Supabase secrets: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+   STRIPE_CONNECT_SECRET with the live values
+5. Redeploy all four functions:
+     supabase functions deploy create-connect-account
+     supabase functions deploy create-payment-intent
+     supabase functions deploy stripe-webhook
+     supabase functions deploy verify-connect-account
+6. Update widget.js publishable key (pk_test_ → pk_live_) if hardcoded
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SWITCHED TO STANDARD CONNECT (7 Apr 2026)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHY WE SWITCHED:
+  Express Connect required a custom form (name, DOB, address, BSB) plus a
+  mandatory redirect to Stripe's hosted KYC page. The seller experience was
+  complex and the status detection was unreliable due to Stripe's controller
+  API behaving differently from standard Express accounts.
+
+  Standard Connect is simpler for everyone:
+  - Seller just clicks "Connect with Stripe" — one button, no form
+  - Seller logs into their existing Stripe account OR creates one on Stripe.com
+  - Stripe handles all KYC, bank account setup, and identity verification
+  - McBook just receives the connected account ID (stripe_user_id) via OAuth
+  - Payment routing is identical — 3% fee still deducted automatically
+
+HOW STANDARD CONNECT OAUTH WORKS:
+  1. Seller clicks "Connect with Stripe" on stripe-onboarding.html
+  2. Redirected to: https://connect.stripe.com/oauth/authorize?...
+     (with client_id, scope=read_write, redirect_uri)
+  3. Seller logs in or creates a Stripe account, approves the connection
+  4. Stripe redirects back to stripe-oauth-callback.html?code=ac_...
+  5. stripe-oauth-callback.html calls create-connect-account Edge Function
+  6. Edge Function exchanges the code for stripe_user_id via Stripe OAuth API
+  7. stripe_user_id saved to clients.stripe_account_id in Supabase
+  8. Seller redirected to stripe-return.html showing their account status
+
+WHAT CHANGED IN CODE:
+  - create-connect-account Edge Function: completely rewritten — no longer
+    creates accounts via API. Now just exchanges OAuth code for account ID.
+  - stripe-onboarding.html: entire form removed, replaced with a single
+    "Connect with Stripe" button and 3-step explanation
+  - stripe-oauth-callback.html: NEW page — handles Stripe's OAuth redirect,
+    calls Edge Function with the code, redirects to stripe-return.html
+  - stripe-refresh.html: simplified — just redirects to stripe-onboarding.html
+    (account links don't exist for Standard Connect)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACTION REQUIRED TO ACTIVATE STANDARD CONNECT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Two things needed from the Stripe Dashboard before the Connect button works:
+
+STEP A — Get your Client ID  ✓ DONE
+  Client ID: ca_UI2x8Fcilibs1dHnpUpM0avgphqLXFHW
+  Set in: mcbook/stripe-onboarding.html → STRIPE_CLIENT_ID
+
+STEP B — Register the redirect URI  ✓ DONE
+  https://matthiasdev.com/mcbook/stripe-oauth-callback.html
+
+STEP C — Paste the Client ID into the code  ✓ DONE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+KNOWN ISSUES & FIXES (post Standard Connect switch)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ISSUE 1 — Stripe dashboard link missing for Standard accounts
+  Cause:  createLoginLink() is Express-only. Calling it on a Standard account
+          throws an error, so dashboardUrl was returning null.
+  Fix:    verify-connect-account now catches the error and falls back to
+          https://dashboard.stripe.com as the dashboard URL. Button label
+          changed from "Stripe Dashboard" to "Go to Stripe" in both
+          stripe-onboarding.html and stripe-return.html.
+
+ISSUE 2 — Testing OAuth locally causes session loss
+  Cause:  Supabase sessions are stored in localStorage, which is domain-scoped.
+          If you're logged in on localhost, the session won't be available when
+          Stripe redirects back to matthiasdev.com/mcbook/stripe-oauth-callback.html.
+  Fix:    Always test the Payouts flow from matthiasdev.com, not localhost.
+          Login at matthiasdev.com/mcbook/login.html first, then go to Payouts.
+
+ISSUE 3 — Old Express test account in database
+  Cause:  During Express Connect testing, a restricted "Any Any" account was
+          created and its ID was saved to the clients table. This makes the
+          Payouts page show "Stripe account needs attention" instead of the
+          clean first-time "Connect with Stripe" experience.
+  Fix A:  Click "Connect a different Stripe account" — this still works and
+          will overwrite the old ID with the new Standard account on completion.
+  Fix B:  Clear it manually in Supabase SQL Editor:
+
+          UPDATE clients
+          SET stripe_account_id      = null,
+              stripe_account_status  = 'none',
+              stripe_charges_enabled = false,
+              stripe_payouts_enabled = false
+          WHERE email = 'your-test-user@email.com';
+
+  Also delete the orphaned Express account from:
+    Stripe Dashboard → Connect → Accounts → find "Any Any" → Delete
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FULL ONBOARDING FLOW (Standard Connect — as tested)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Seller logs into McBook at matthiasdev.com/mcbook/login.html
+2. Goes to Payouts in sidebar → stripe-onboarding.html
+3. Sees "Payouts not set up" banner + "Connect with Stripe" button
+4. Clicks button → redirected to connect.stripe.com/oauth/authorize
+5. Logs into or creates a Stripe account, approves McBook's access
+6. Stripe redirects to stripe-oauth-callback.html?code=ac_...
+7. Callback page exchanges code via create-connect-account Edge Function
+8. stripe_user_id saved to clients.stripe_account_id in Supabase
+9. Redirected to stripe-return.html → shows account status
+10. If enabled immediately (existing verified account): "You're all set!"
+    If pending (new Stripe account): "Verification in progress"
+    If restricted (missing info): "A few more details needed" + link back

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCBook Admin — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #111118;
+      --border:      #1e1e2e;
+      --accent:      #4ade80;
+      --accent-bg:   rgba(74,222,128,0.07);
+      --accent-glow: rgba(74,222,128,0.2);
+      --text:        #ffffff;
+      --text-2:      #8b8b9e;
+      --text-3:      #55556a;
+      --danger:      #ef4444;
+      --radius:      16px;
+      --radius-sm:   10px;
+      --ease:        0.2s ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background-image: radial-gradient(ellipse 60% 50% at 50% 40%, rgba(74,222,128,0.06) 0%, transparent 70%);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.55; transform: scale(0.8); }
+    }
+
+    /* ── Badge ── */
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 13px;
+      background: var(--accent-bg);
+      border: 1px solid rgba(74,222,128,0.22);
+      border-radius: 50px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      animation: fadeUp 0.35s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease infinite;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 28px 60px rgba(0,0,0,0.55), 0 0 40px rgba(74,222,128,0.07);
+      animation: fadeUp 0.42s cubic-bezier(0.22,1,0.36,1) 0.05s both;
+      overflow: hidden;
+    }
+
+    /* ── Card header ── */
+    .card-header {
+      padding: 22px 32px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: var(--accent-bg);
+      border: 1px solid rgba(74,222,128,0.28);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #4ade80, #86efac);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Card body ── */
+    .card-body { padding: 28px 32px; }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 5px;
+    }
+    .subtitle {
+      font-size: 0.82rem;
+      color: var(--text-2);
+      margin-bottom: 26px;
+      line-height: 1.5;
+    }
+
+    /* ── Fields ── */
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 7px;
+    }
+    .field input {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color var(--ease), box-shadow var(--ease);
+    }
+    .field input:hover  { border-color: rgba(74,222,128,0.3); }
+    .field input:focus  {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(74,222,128,0.1), 0 0 20px rgba(74,222,128,0.18);
+    }
+    .field input::placeholder { color: var(--text-2); opacity: 0.45; }
+
+    /* ── Button ── */
+    .btn-submit {
+      width: 100%;
+      margin-top: 6px;
+      padding: 13px;
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none;
+      border-radius: 50px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: inherit;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: filter var(--ease), transform var(--ease), box-shadow var(--ease);
+    }
+    .btn-submit::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+    .btn-submit:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 0 28px rgba(74,222,128,0.35), 0 4px 16px rgba(0,0,0,0.3);
+      transform: translateY(-1px);
+    }
+    .btn-submit:active  { transform: translateY(0); filter: brightness(0.97); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* ── Error ── */
+    .error-msg {
+      display: none;
+      font-size: 0.8rem;
+      color: var(--danger);
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: var(--radius-sm);
+      padding: 10px 13px;
+      margin-bottom: 14px;
+    }
+    .error-msg.visible { display: block; }
+
+    @media (max-width: 480px) {
+      .card-body, .card-header { padding-left: 22px; padding-right: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="admin-badge">
+    <span class="badge-dot"></span>
+    Admin Portal
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="logo-icon">&#128274;</div>
+      <span class="logo-text">MCBook Admin</span>
+    </div>
+    <div class="card-body">
+      <h1>MCBook Admin</h1>
+      <p class="subtitle">Restricted access. Authorised personnel only.</p>
+
+      <div class="error-msg" id="error-msg"></div>
+
+      <form id="login-form">
+        <div class="field">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="admin@example.com" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn-submit" id="submit-btn">Sign in</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './js/supabase.js'
+
+    const form      = document.getElementById('login-form')
+    const errorMsg  = document.getElementById('error-msg')
+    const submitBtn = document.getElementById('submit-btn')
+
+    function showError(msg) {
+      errorMsg.textContent = msg
+      errorMsg.classList.add('visible')
+    }
+    function hideError() {
+      errorMsg.classList.remove('visible')
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      hideError()
+
+      const email    = document.getElementById('email').value.trim()
+      const password = document.getElementById('password').value
+
+      submitBtn.disabled    = true
+      submitBtn.textContent = 'Signing in…'
+
+      let data, error
+      try {
+        ;({ data, error } = await supabase.auth.signInWithPassword({ email, password }))
+      } catch {
+        showError('Connection error. Please try again.')
+        submitBtn.disabled    = false
+        submitBtn.textContent = 'Sign in'
+        return
+      }
+
+      if (error) {
+        const msg = error.message?.toLowerCase() ?? ''
+        if (msg.includes('invalid') || msg.includes('credentials') || msg.includes('password')) {
+          showError('Incorrect email or password.')
+        } else if (msg.includes('network') || msg.includes('fetch')) {
+          showError('Connection error. Please try again.')
+        } else {
+          showError('Incorrect email or password.')
+        }
+        submitBtn.disabled    = false
+        submitBtn.textContent = 'Sign in'
+        return
+      }
+
+      if (data.user?.email !== 'matthiasdevelopment@gmail.com') {
+        await supabase.auth.signOut()
+        showError('You are not authorised to access this area.')
+        submitBtn.disabled    = false
+        submitBtn.textContent = 'Sign in'
+        return
+      }
+
+      window.location.href = 'admin.html'
+    })
+  </script>
+
+</body>
+</html>

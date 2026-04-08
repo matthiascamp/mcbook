@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payouts Setup — MCBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #111118;
+      --surface-2:   #14141d;
+      --border:      #1e1e2e;
+      --accent:      #4ade80;
+      --accent-dim:  rgba(74,222,128,0.75);
+      --accent-bg:   rgba(74,222,128,0.07);
+      --accent-glow: 0 0 12px rgba(74,222,128,0.15);
+      --text:        #ffffff;
+      --text-2:      #8b8b9e;
+      --warning:     #f59e0b;
+      --danger:      #ef4444;
+      --radius-sm:   8px;
+      --radius:      12px;
+      --sidebar-w:   228px;
+      --topbar-h:    60px;
+      --ease:        0.2s ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 100; overflow-y: auto;
+    }
+    .sidebar-logo { display: flex; align-items: center; gap: 9px; padding: 18px 18px 16px; border-bottom: 1px solid var(--border); text-decoration: none; }
+    .sidebar-logo-icon { width: 30px; height: 30px; background: var(--accent-bg); border: 1px solid rgba(74,222,128,0.2); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+    .sidebar-logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, #4ade80, #86efac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-section-label { padding: 18px 18px 5px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.2); }
+    .nav-link { display: flex; align-items: center; gap: 9px; padding: 9px 18px; color: var(--text-2); text-decoration: none; font-size: 0.835rem; font-weight: 500; letter-spacing: -0.01em; border-right: 2px solid transparent; transition: color var(--ease), background var(--ease), border-color var(--ease); }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .nav-link.active { color: var(--accent); background: var(--accent-bg); border-right-color: var(--accent); }
+    .nav-icon { width: 16px; text-align: center; font-size: 0.9rem; flex-shrink: 0; opacity: 0.75; }
+    .nav-link.active .nav-icon { opacity: 1; }
+    .sidebar-footer { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); }
+    .sidebar-user { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+    .sidebar-avatar { width: 30px; height: 30px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: var(--text-2); flex-shrink: 0; }
+    .sidebar-user-name { font-size: 0.8rem; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+    .sidebar-user-role { font-size: 0.7rem; color: var(--text-2); margin-top: 1px; }
+
+    /* ── Main ── */
+    .main { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: -0.02em; }
+    .topbar-date  { font-size: 0.78rem; color: var(--text-2); }
+    .content { flex: 1; padding: 24px; max-width: 680px; }
+
+    /* ── Status banner ── */
+    .status-banner { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 24px; font-size: 0.83rem; }
+    .status-banner.enabled    { background: var(--accent-bg);           border-color: rgba(74,222,128,0.25); color: var(--accent); }
+    .status-banner.pending    { background: rgba(245,158,11,0.06);      border-color: rgba(245,158,11,0.2);  color: var(--warning); }
+    .status-banner.restricted { background: rgba(239,68,68,0.06);       border-color: rgba(239,68,68,0.2);   color: var(--danger); }
+    .status-banner.none       { background: var(--surface);             border-color: var(--border);         color: var(--text-2); }
+    .status-icon  { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+    .status-title { font-weight: 700; margin-bottom: 3px; }
+    .status-sub   { font-size: 0.76rem; opacity: 0.85; line-height: 1.5; }
+
+    /* ── Card ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .card-header-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; }
+    .card-title { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.01em; }
+    .card-sub   { font-size: 0.73rem; color: var(--text-2); margin-top: 2px; }
+    .card-body  { padding: 24px; }
+
+    /* ── Stripe connect button ── */
+    .btn-stripe {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 14px 20px;
+      background: #635bff; border: none; border-radius: var(--radius-sm);
+      color: #fff; font-family: inherit; font-size: 0.92rem; font-weight: 700;
+      cursor: pointer; text-decoration: none;
+      transition: opacity var(--ease), box-shadow var(--ease);
+    }
+    .btn-stripe:hover { opacity: 0.88; box-shadow: 0 0 16px rgba(99,91,255,0.35); }
+
+    /* ── Stripe dashboard button ── */
+    .btn-dashboard {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 14px; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+      color: var(--text); font-size: 0.8rem; font-weight: 600;
+      text-decoration: none; transition: background var(--ease);
+    }
+    .btn-dashboard:hover { background: rgba(255,255,255,0.1); }
+
+    /* ── How it works steps ── */
+    .steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+    .step  { display: flex; align-items: flex-start; gap: 12px; }
+    .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-bg); border: 1px solid rgba(74,222,128,0.25); color: var(--accent); font-size: 0.72rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .step-text { font-size: 0.83rem; color: var(--text-2); line-height: 1.55; }
+    .step-text strong { color: var(--text); font-weight: 600; }
+
+    /* ── Spinner ── */
+    .btn-spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Hamburger + sidebar overlay ── */
+    .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; flex-shrink: 0; }
+    .hamburger:hover { background: rgba(255,255,255,0.06); }
+    .hamburger span { display: block; width: 18px; height: 2px; background: var(--text-2); border-radius: 2px; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
+    .sidebar-overlay.active { display: block; }
+
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 200; }
+      .sidebar.open { transform: none; }
+      .main { margin-left: 0; }
+    }
+    @media (max-width: 480px) { .content { padding: 16px; } }
+  </style>
+</head>
+<body>
+
+  <script type="module">
+    import { requireAuth, signOut } from './js/auth.js'
+    import { supabase } from './js/supabase.js'
+
+    // ── Replace with your Stripe Client ID from:
+    // Stripe Dashboard → Connect → Settings → Client ID (ca_...)
+    const STRIPE_CLIENT_ID = 'ca_UI2x8Fcilibs1dHnpUpM0avgphqLXFHW'
+    const SUPABASE_URL     = 'https://uijudgnqawtvjyjuyuwo.supabase.co'
+    const REDIRECT_URI     = 'https://matthiasdev.com/mcbook/stripe-oauth-callback.html'
+
+    const session = await requireAuth()
+    if (!session) throw new Error('No session')
+
+    // ── Load client ───────────────────────────────────────────────────────────
+    const { data: client } = await supabase
+      .from('clients')
+      .select('business_name, email, stripe_account_id')
+      .eq('id', session.user.id)
+      .single()
+
+    const initials = (client?.business_name ?? 'MB').slice(0, 2).toUpperCase()
+    document.getElementById('sidebar-avatar').textContent = initials
+    document.getElementById('sidebar-name').textContent   = client?.business_name ?? client?.email ?? ''
+
+    // ── Build OAuth URL ───────────────────────────────────────────────────────
+    const oauthUrl = `https://connect.stripe.com/oauth/authorize` +
+      `?response_type=code` +
+      `&client_id=${STRIPE_CLIENT_ID}` +
+      `&scope=read_write` +
+      `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+      `&stripe_user[email]=${encodeURIComponent(session.user.email ?? '')}`
+
+    document.getElementById('connect-btn').href = oauthUrl
+
+    // ── Show current status ───────────────────────────────────────────────────
+    const banner  = document.getElementById('status-banner')
+    const connect = document.getElementById('connect-card')
+
+    if (!client?.stripe_account_id) {
+      // No account yet — show the connect button
+      banner.className = 'status-banner none'
+      banner.innerHTML = `
+        <span class="status-icon">&#128274;</span>
+        <div>
+          <div class="status-title">Payouts not set up</div>
+          <div class="status-sub">Connect your Stripe account below to start receiving payments.</div>
+        </div>`
+      connect.style.display = 'block'
+    } else {
+      // Has an account — fetch live status from Stripe
+      try {
+        const res  = await fetch(`${SUPABASE_URL}/functions/v1/verify-connect-account`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        })
+        const data = await res.json()
+        console.log('[MCBook] verify-connect-account:', data)
+
+        if (data.status === 'enabled') {
+          banner.className = 'status-banner enabled'
+          banner.innerHTML = `
+            <span class="status-icon">&#9989;</span>
+            <div style="flex:1">
+              <div class="status-title">Payouts enabled</div>
+              <div class="status-sub">Your Stripe account is connected. Funds are paid out automatically each day.</div>
+            </div>
+            ${data.dashboardUrl ? `<a href="${data.dashboardUrl}" target="_blank" class="btn-dashboard">&#128200; Go to Stripe</a>` : ''}`
+          connect.style.display = 'none'
+
+        } else if (data.status === 'restricted') {
+          banner.className = 'status-banner restricted'
+          banner.innerHTML = `
+            <span class="status-icon">&#9888;&#65039;</span>
+            <div>
+              <div class="status-title">Stripe account needs attention</div>
+              <div class="status-sub">Log into your Stripe account to resolve any outstanding requirements.</div>
+            </div>`
+          connect.style.display = 'block'
+          document.getElementById('connect-label').textContent = 'Connect a different Stripe account'
+
+        } else {
+          banner.className = 'status-banner pending'
+          banner.innerHTML = `
+            <span class="status-icon">&#9203;</span>
+            <div>
+              <div class="status-title">Verification in progress</div>
+              <div class="status-sub">Stripe is reviewing your account. This usually takes a few minutes.</div>
+            </div>`
+          connect.style.display = 'none'
+        }
+      } catch (err) {
+        console.error('Status check failed:', err)
+        connect.style.display = 'block'
+      }
+    }
+
+    // ── Sign out ──────────────────────────────────────────────────────────────
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="signout"]')) { e.preventDefault(); signOut() }
+    })
+
+    // ── Topbar date ───────────────────────────────────────────────────────────
+    document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-AU', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    })
+  </script>
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <a href="dashboard.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">&#128197;</div>
+      <span class="sidebar-logo-text">MCBook</span>
+    </a>
+    <span class="nav-section-label">Main</span>
+    <a href="dashboard.html"  class="nav-link"><span class="nav-icon">&#9707;</span> Dashboard</a>
+    <a href="bookings.html"   class="nav-link"><span class="nav-icon">&#128203;</span> Bookings</a>
+    <a href="customers.html"  class="nav-link"><span class="nav-icon">&#128100;</span> Customers</a>
+    <span class="nav-section-label">Setup</span>
+    <a href="services.html"          class="nav-link"><span class="nav-icon">&#10024;</span> Services</a>
+    <a href="availability.html"      class="nav-link"><span class="nav-icon">&#128197;</span> Availability</a>
+    <a href="stripe-onboarding.html" class="nav-link active"><span class="nav-icon">&#128176;</span> Payouts</a>
+    <a href="embed.html"             class="nav-link"><span class="nav-icon">&#128279;</span> Share</a>
+    <span class="nav-section-label">Account</span>
+    <a href="settings.html" class="nav-link"><span class="nav-icon">&#9881;&#65039;</span> Settings</a>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar">MB</div>
+        <div>
+          <div class="sidebar-user-name" id="sidebar-name">Loading…</div>
+          <div class="sidebar-user-role">Business Owner</div>
+        </div>
+      </div>
+      <a href="#" class="nav-link" data-action="signout"><span class="nav-icon">&#10148;</span> Sign Out</a>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Open menu"><span></span><span></span><span></span></button>
+      <span class="topbar-title">Payouts Setup</span>
+      <div class="topbar-actions">
+        <span class="topbar-date" id="topbar-date"></span>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <div id="status-banner" class="status-banner none">
+        <span class="status-icon">&#9203;</span>
+        <div><div class="status-title">Loading…</div></div>
+      </div>
+
+      <!-- Fee disclosure — always visible -->
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <div class="card-header-icon">&#128200;</div>
+          <div>
+            <div class="card-title">Pricing &amp; fees</div>
+            <div class="card-sub">Transparent breakdown of what MCBook and Stripe charge.</div>
+          </div>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);">
+            <div>
+              <div style="font-size:0.82rem;font-weight:600;color:var(--text);">MCBook platform fee</div>
+              <div style="font-size:0.72rem;color:var(--text-2);margin-top:2px;">Applied to each paid booking</div>
+            </div>
+            <div style="font-size:1rem;font-weight:800;color:var(--accent);font-family:'Syne',sans-serif;">3%</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);">
+            <div>
+              <div style="font-size:0.82rem;font-weight:600;color:var(--text);">Stripe processing fee</div>
+              <div style="font-size:0.72rem;color:var(--text-2);margin-top:2px;">Stripe's standard card processing rate</div>
+            </div>
+            <div style="font-size:0.82rem;font-weight:700;color:var(--text-2);">1.7% + 30¢</div>
+          </div>
+          <p style="font-size:0.72rem;color:var(--text-2);line-height:1.55;">
+            Fees are deducted automatically before funds are paid out to your bank. Your bank details are held securely by Stripe — never by MCBook.
+          </p>
+        </div>
+      </div>
+
+      <!-- Connect card -->
+      <div class="card" id="connect-card" style="display:none">
+        <div class="card-header">
+          <div class="card-header-icon">&#128176;</div>
+          <div>
+            <div class="card-title">Connect your Stripe account</div>
+            <div class="card-sub">Use your existing Stripe account or create one — takes under a minute.</div>
+          </div>
+        </div>
+        <div class="card-body">
+
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-text">Click <strong>Connect with Stripe</strong> below.</div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-text">Log in to Stripe or create a free account — Stripe handles your identity verification and bank details securely.</div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-text">You'll be sent back here automatically. Once connected, customer payments are transferred to your bank daily.</div>
+            </div>
+          </div>
+
+          <a href="#" id="connect-btn" class="btn-stripe">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <span id="connect-label">Connect with Stripe</span>
+          </a>
+
+          <p style="font-size:0.72rem;color:var(--text-2);margin-top:12px;text-align:center;line-height:1.5;">
+            MCBook takes a 3% platform fee. Stripe's standard processing fees also apply.<br>
+            Your bank details are held securely by Stripe — never by MCBook.
+          </p>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <script>
+    var _hbg = document.getElementById('hamburger'), _sb = document.querySelector('.sidebar'), _ov = document.getElementById('sidebar-overlay')
+    _hbg && _hbg.addEventListener('click', function() { _sb.classList.toggle('open'); _ov.classList.toggle('active') })
+    _ov  && _ov.addEventListener('click',  function() { _sb.classList.remove('open'); _ov.classList.remove('active') })
+  </script>
+</body>
+</html>

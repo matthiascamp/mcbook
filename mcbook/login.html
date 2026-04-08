@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCBook — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #111118;
+      --surface-2:   #16161f;
+      --border:      #1e1e2e;
+      --accent:      #4ade80;
+      --accent-dim:  rgba(74,222,128,0.75);
+      --accent-bg:   rgba(74,222,128,0.07);
+      --accent-glow: 0 0 20px rgba(74,222,128,0.2);
+      --accent-glow-lg: 0 0 40px rgba(74,222,128,0.1);
+      --text:        #ffffff;
+      --text-2:      #8b8b9e;
+      --text-3:      #55556a;
+      --danger:      #ef4444;
+      --success:     #4ade80;
+      --radius-sm:   10px;
+      --radius:      16px;
+      --ease:        0.22s ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background-image: radial-gradient(ellipse 60% 50% at 50% 40%, rgba(74,222,128,0.055) 0%, transparent 70%);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Hero badge above card ── */
+    .login-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 13px;
+      background: var(--accent-bg);
+      border: 1px solid rgba(74,222,128,0.22);
+      border-radius: 50px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      margin-bottom: 20px;
+      animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    /* ── Main card ── */
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 430px;
+      overflow: hidden;
+      box-shadow: 0 28px 60px rgba(0,0,0,0.55), var(--accent-glow-lg);
+      animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+    }
+
+    /* ── Card header ── */
+    .login-header {
+      padding: 24px 36px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .login-logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent-bg);
+      border: 1px solid rgba(74,222,128,0.28);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.05rem;
+      flex-shrink: 0;
+    }
+    .login-logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #4ade80, #86efac);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Tab switcher ── */
+    .login-tabs {
+      display: flex;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .login-tab {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: color var(--ease), background var(--ease);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .login-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background: var(--surface);
+    }
+    .login-tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Card body ── */
+    .login-body { padding: 28px 36px; }
+
+    .login-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+    .login-subtitle {
+      font-size: 0.83rem;
+      color: var(--text-2);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    /* ── Fields ── */
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 7px;
+    }
+    .field-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .field-wrap input {
+      padding-right: 42px;
+    }
+    .btn-eye {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      color: var(--text-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color var(--ease);
+      flex-shrink: 0;
+    }
+    .btn-eye:hover { color: var(--accent); }
+    .btn-eye svg { width: 17px; height: 17px; pointer-events: none; }
+    .field input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color var(--ease), box-shadow var(--ease), background var(--ease);
+    }
+    .field input:hover { border-color: rgba(74,222,128,0.3); }
+    .field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(74,222,128,0.1), var(--accent-glow);
+      background: rgba(74,222,128,0.025);
+    }
+    .field input::placeholder { color: var(--text-2); opacity: 0.5; }
+
+    /* ── Submit button ── */
+    .btn-login {
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none;
+      border-radius: 50px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: inherit;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: filter var(--ease), box-shadow var(--ease), transform var(--ease);
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-login::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+    .btn-login:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 0 28px rgba(74,222,128,0.35), 0 4px 16px rgba(0,0,0,0.3);
+      transform: translateY(-1px);
+    }
+    .btn-login:active { transform: translateY(0); filter: brightness(0.97); }
+
+    /* ── Messages ── */
+    .login-msg {
+      font-size: 0.8rem;
+      border-radius: var(--radius-sm);
+      padding: 10px 13px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .login-msg.error {
+      display: block;
+      color: var(--danger);
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+    .login-msg.success {
+      display: block;
+      color: var(--success);
+      background: rgba(74,222,128,0.08);
+      border: 1px solid rgba(74,222,128,0.2);
+    }
+
+    /* ── Footer ── */
+    .login-footer {
+      padding: 13px 36px 18px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.71rem;
+      color: var(--text-3);
+      line-height: 1.7;
+    }
+    .login-footer a {
+      color: rgba(74,222,128,0.5);
+      text-decoration: none;
+      transition: color var(--ease);
+    }
+    .login-footer a:hover {
+      color: var(--accent-dim);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    /* ── Top nav ── */
+    .login-nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 5%;
+      height: 60px;
+      background: rgba(10,10,15,0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .login-nav-logo {
+      display: flex; align-items: center; gap: 9px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.1rem; font-weight: 800;
+      letter-spacing: -0.04em; text-decoration: none;
+    }
+    .login-nav-icon {
+      width: 30px; height: 30px;
+      background: rgba(74,222,128,0.07);
+      border: 1px solid rgba(74,222,128,0.25);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem;
+    }
+    .login-nav-brand {
+      background: linear-gradient(135deg, #4ade80, #86efac);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .login-nav-back {
+      font-size: 0.82rem; font-weight: 500;
+      color: rgba(255,255,255,0.4);
+      text-decoration: none;
+      transition: color 0.2s ease;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .login-nav-back:hover { color: rgba(255,255,255,0.75); }
+
+    /* ── Grid bg ── */
+    .login-grid-bg {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+    }
+
+    /* Push content below nav */
+    body { padding-top: 84px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      body { padding: 84px 16px 16px; }
+      .login-body, .login-header, .login-footer { padding-left: 22px; padding-right: 22px; }
+      .login-title { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-grid-bg"></div>
+
+  <nav class="login-nav">
+    <a href="index.html" class="login-nav-logo">
+      <div class="login-nav-icon">&#128197;</div>
+      <span class="login-nav-brand">MCBook</span>
+    </a>
+    <a href="index.html" class="login-nav-back">&#8592; Back to site</a>
+  </nav>
+
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 24px;">
+  <div class="login-badge">
+    <span class="badge-dot"></span>
+    Booking management for independent businesses
+  </div>
+
+  <div class="login-card">
+
+    <!-- Branding -->
+    <div class="login-header">
+      <div class="login-logo-icon">&#128197;</div>
+      <span class="login-logo-text">MCBook</span>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="login-tabs">
+      <button class="login-tab active" id="tab-signin" type="button">Sign In</button>
+      <button class="login-tab" id="tab-signup" type="button">Create Account</button>
+      <button class="login-tab" id="tab-reset" type="button">Reset Password</button>
+    </div>
+
+    <!-- Body -->
+    <div class="login-body">
+
+      <!-- Sign In form -->
+      <div id="form-signin">
+        <h1 class="login-title">Welcome back</h1>
+        <p class="login-subtitle">Sign in to your MCBook dashboard.</p>
+        <div class="login-msg" id="signin-msg"></div>
+        <form id="signinForm">
+          <div class="field">
+            <label for="signin-email">Email Address</label>
+            <input type="email" id="signin-email" placeholder="you@yourbusiness.com" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label for="signin-password">Password</label>
+            <div class="field-wrap">
+              <input type="password" id="signin-password" placeholder="••••••••" autocomplete="current-password" required>
+              <button type="button" class="btn-eye" aria-label="Toggle password visibility" data-target="signin-password">
+                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn-login">Sign In</button>
+        </form>
+      </div>
+
+      <!-- Reset Password form -->
+      <div id="form-reset" style="display:none;">
+        <h1 class="login-title">Reset password</h1>
+        <p class="login-subtitle">Enter your email and we'll send a reset link.</p>
+        <div class="login-msg" id="reset-msg"></div>
+        <form id="resetForm">
+          <div class="field">
+            <label for="reset-email">Email Address</label>
+            <input type="email" id="reset-email" placeholder="you@yourbusiness.com" autocomplete="email" required>
+          </div>
+          <button type="submit" class="btn-login">Send reset link</button>
+        </form>
+      </div>
+
+      <!-- Sign Up form -->
+      <div id="form-signup" style="display:none;">
+        <h1 class="login-title">Create your account</h1>
+        <p class="login-subtitle">Set up MCBook for your business in seconds.</p>
+        <div class="login-msg" id="signup-msg"></div>
+        <form id="signupForm">
+          <div class="field">
+            <label for="signup-business">Business Name</label>
+            <input type="text" id="signup-business" placeholder="e.g. Jane's Hair Studio" autocomplete="organization" required>
+          </div>
+          <div class="field">
+            <label for="signup-email">Email Address</label>
+            <input type="email" id="signup-email" placeholder="you@yourbusiness.com" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label for="signup-password">Password</label>
+            <div class="field-wrap">
+              <input type="password" id="signup-password" placeholder="At least 8 characters" autocomplete="new-password" required minlength="8">
+              <button type="button" class="btn-eye" aria-label="Toggle password visibility" data-target="signup-password">
+                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="signup-confirm">Confirm Password</label>
+            <div class="field-wrap">
+              <input type="password" id="signup-confirm" placeholder="Repeat your password" autocomplete="new-password" required>
+              <button type="button" class="btn-eye" aria-label="Toggle password visibility" data-target="signup-confirm">
+                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn-login">Create Account</button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="login-footer">
+      Need help? <a href="mailto:matthiasdevelopment@gmail.com">matthiasdevelopment@gmail.com</a>
+    </div>
+
+  </div>
+
+  </div>
+
+  <script type="module">
+    import { signIn, signUp, resetPassword, ensureClientProfile } from './js/auth.js'
+
+    /* ── Password visibility toggles ── */
+    document.querySelectorAll('.btn-eye').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input   = document.getElementById(btn.dataset.target)
+        const isText  = input.type === 'text'
+        input.type    = isText ? 'password' : 'text'
+        btn.querySelector('.eye-show').style.display = isText ? '' : 'none'
+        btn.querySelector('.eye-hide').style.display = isText ? 'none' : ''
+      })
+    })
+
+    /* ── Tab switching ── */
+    const tabSignIn  = document.getElementById('tab-signin')
+    const tabSignUp  = document.getElementById('tab-signup')
+    const tabReset   = document.getElementById('tab-reset')
+    const formSignIn = document.getElementById('form-signin')
+    const formSignUp = document.getElementById('form-signup')
+    const formReset  = document.getElementById('form-reset')
+
+    function showTab(active) {
+      tabSignIn.classList.toggle('active', active === 'signin')
+      tabSignUp.classList.toggle('active', active === 'signup')
+      tabReset.classList.toggle('active',  active === 'reset')
+      formSignIn.style.display = active === 'signin' ? '' : 'none'
+      formSignUp.style.display = active === 'signup' ? '' : 'none'
+      formReset.style.display  = active === 'reset'  ? '' : 'none'
+    }
+
+    tabSignIn.addEventListener('click', () => showTab('signin'))
+    tabSignUp.addEventListener('click', () => showTab('signup'))
+    tabReset.addEventListener('click',  () => showTab('reset'))
+
+    // Hash-based initial tab
+    if (location.hash === '#signup') showTab('signup')
+    else if (location.hash === '#reset') showTab('reset')
+
+    /* ── Sign In ── */
+    document.getElementById('signinForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const msg      = document.getElementById('signin-msg')
+      const btn      = e.target.querySelector('button[type="submit"]')
+      const email    = document.getElementById('signin-email').value.trim()
+      const password = document.getElementById('signin-password').value
+
+      msg.className = 'login-msg'
+      btn.disabled  = true
+      btn.textContent = 'Signing in…'
+
+      const { data, error } = await signIn(email, password)
+
+      if (error) {
+        msg.textContent = error.message
+        msg.classList.add('error')
+        btn.disabled    = false
+        btn.textContent = 'Sign In'
+        return
+      }
+
+      // Create clients row if this is their first login
+      const uid          = data.user.id
+      const businessName = data.user.user_metadata?.business_name
+      await ensureClientProfile(uid, businessName)
+
+      window.location.href = 'dashboard.html'
+    })
+
+    /* ── Sign Up ── */
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const msg          = document.getElementById('signup-msg')
+      const btn          = e.target.querySelector('button[type="submit"]')
+      const businessName = document.getElementById('signup-business').value.trim()
+      const email        = document.getElementById('signup-email').value.trim()
+      const password     = document.getElementById('signup-password').value
+      const confirm      = document.getElementById('signup-confirm').value
+
+      msg.className = 'login-msg'
+
+      if (password !== confirm) {
+        msg.textContent = 'Passwords do not match.'
+        msg.classList.add('error')
+        return
+      }
+
+      btn.disabled    = true
+      btn.textContent = 'Creating account…'
+
+      const { error } = await signUp(email, password, businessName)
+
+      if (error) {
+        msg.textContent = error.message
+        msg.classList.add('error')
+        btn.disabled    = false
+        btn.textContent = 'Create Account'
+        return
+      }
+
+      msg.textContent = '✓ Account created! Check your email to confirm, then sign in.'
+      msg.classList.add('success')
+      btn.disabled = true
+
+      // Switch to sign-in tab after 3 seconds
+      setTimeout(() => {
+        showTab('signin')
+        document.getElementById('signin-email').value = email
+      }, 3000)
+    })
+
+    /* ── Reset Password ── */
+    document.getElementById('resetForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const msg   = document.getElementById('reset-msg')
+      const btn   = e.target.querySelector('button[type="submit"]')
+      const email = document.getElementById('reset-email').value.trim()
+
+      msg.className = 'login-msg'
+      btn.disabled  = true
+      btn.textContent = 'Sending…'
+
+      const { error } = await resetPassword(email)
+
+      btn.disabled    = false
+      btn.textContent = 'Send reset link'
+
+      if (error) {
+        msg.textContent = error.message
+        msg.classList.add('error')
+        return
+      }
+
+      msg.textContent = '✓ Reset link sent — check your email.'
+      msg.classList.add('success')
+      document.getElementById('reset-email').value = ''
+    })
+  </script>
+</body>
+</html>

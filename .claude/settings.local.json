@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__ide__getDiagnostics",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

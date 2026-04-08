@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customers — MCBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #111118;
+      --surface-2:   #14141d;
+      --border:      #1e1e2e;
+      --accent:      #4ade80;
+      --accent-dim:  rgba(74,222,128,0.75);
+      --accent-bg:   rgba(74,222,128,0.07);
+      --accent-glow: 0 0 12px rgba(74,222,128,0.15);
+      --text:        #ffffff;
+      --text-2:      #8b8b9e;
+      --warning:     #f59e0b;
+      --danger:      #ef4444;
+      --radius-sm:   8px;
+      --radius:      12px;
+      --sidebar-w:   228px;
+      --topbar-h:    60px;
+      --ease:        0.2s ease;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Scrollbars ── */
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(74,222,128,0.35); }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+    }
+
+    /* ══════════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════════ */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 100; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: rgba(74,222,128,0.2) transparent;
+    }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(74,222,128,0.2); }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(74,222,128,0.45); }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 9px;
+      padding: 18px 18px 16px; border-bottom: 1px solid var(--border); text-decoration: none;
+    }
+    .sidebar-logo-icon {
+      width: 30px; height: 30px; background: var(--accent-bg);
+      border: 1px solid rgba(74,222,128,0.2); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0;
+    }
+    .sidebar-logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, #4ade80, #86efac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-section-label {
+      padding: 18px 18px 5px; font-size: 0.62rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.2);
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 9px; padding: 9px 18px;
+      color: var(--text-2); text-decoration: none; font-size: 0.835rem; font-weight: 500;
+      letter-spacing: -0.01em; border-right: 2px solid transparent;
+      transition: color var(--ease), background var(--ease), border-color var(--ease);
+    }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .nav-link.active { color: var(--accent); background: var(--accent-bg); border-right-color: var(--accent); }
+    .nav-icon { width: 16px; text-align: center; font-size: 0.9rem; flex-shrink: 0; opacity: 0.75; }
+    .nav-link.active .nav-icon { opacity: 1; }
+    .sidebar-footer { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); }
+    .sidebar-user { display: flex; align-items: center; gap: 9px; }
+    .sidebar-avatar {
+      width: 30px; height: 30px; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700; color: var(--text-2); flex-shrink: 0;
+    }
+    .sidebar-user-name { font-size: 0.8rem; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+    .sidebar-user-role { font-size: 0.7rem; color: var(--text-2); margin-top: 1px; }
+
+    /* ══════════════════════════════════════
+       MAIN LAYOUT
+    ══════════════════════════════════════ */
+    .main { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: -0.02em; }
+    .topbar-date { font-size: 0.78rem; color: var(--text-2); }
+    .content { flex: 1; padding: 24px; }
+
+    /* ══════════════════════════════════════
+       PAGE — CUSTOMERS
+    ══════════════════════════════════════ */
+
+    /* Stat strip */
+    .stat-strip { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 18px;
+      display: flex; align-items: center; gap: 14px;
+      flex: 1; min-width: 150px; transition: border-color var(--ease);
+    }
+    .stat-chip:hover { border-color: rgba(74,222,128,0.18); }
+    .stat-chip-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0;
+    }
+    .stat-chip-icon.blue  { background: rgba(59,130,246,0.1);  color: #60a5fa; }
+    .stat-chip-icon.green { background: var(--accent-bg);       color: var(--accent); }
+    .stat-chip-icon.amber { background: rgba(245,158,11,0.08);  color: var(--warning); }
+    .stat-chip-val   { font-size: 1.5rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+    .stat-chip-label { font-size: 0.74rem; color: var(--text-2); margin-top: 2px; }
+
+    /* Filters bar */
+    .filters-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-input {
+      flex: 1; min-width: 200px; max-width: 340px;
+      padding: 8px 13px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 0.85rem; font-family: inherit; color: var(--text); background: var(--surface-2);
+      outline: none; transition: border-color var(--ease);
+    }
+    .filter-input:focus { border-color: var(--accent); }
+    .filter-input::placeholder { color: var(--text-2); opacity: 0.7; }
+    .filter-select {
+      padding: 8px 13px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 0.85rem; font-family: inherit; color: var(--text); background: var(--surface-2);
+      outline: none; cursor: pointer; transition: border-color var(--ease);
+    }
+    .filter-select:focus { border-color: var(--accent); }
+
+    /* Table card */
+    .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .table-card-header {
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .table-card-title { font-size: 0.85rem; font-weight: 700; }
+    .table-count { font-size: 0.78rem; color: var(--text-2); }
+
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table thead th {
+      padding: 10px 16px; text-align: left;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--text-2); background: var(--surface-2);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .data-table tbody tr { border-bottom: 1px solid var(--border); transition: background var(--ease); }
+    .data-table tbody tr:last-child { border-bottom: none; }
+    .data-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+    .data-table tbody td { padding: 12px 16px; font-size: 0.85rem; vertical-align: middle; }
+
+    /* Customer cell */
+    .customer-cell { display: flex; align-items: center; gap: 10px; }
+    .cust-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; color: var(--text-2); flex-shrink: 0;
+    }
+    /* Avatar colour classes — dark-mode tinted */
+    .cust-avatar.c1 { background: rgba(59,130,246,0.15);  color: #60a5fa; }
+    .cust-avatar.c2 { background: rgba(74,222,128,0.12);  color: #4ade80; }
+    .cust-avatar.c3 { background: rgba(245,158,11,0.12);  color: #fbbf24; }
+    .cust-avatar.c4 { background: rgba(236,72,153,0.12);  color: #f472b6; }
+    .cust-avatar.c5 { background: rgba(167,139,250,0.12); color: #a78bfa; }
+    .cust-avatar.c6 { background: rgba(251,146,60,0.12);  color: #fb923c; }
+    .cust-avatar.c7 { background: rgba(34,211,238,0.12);  color: #22d3ee; }
+    .cust-avatar.c8 { background: rgba(56,189,248,0.12);  color: #38bdf8; }
+
+    .cust-name  { font-weight: 600; }
+    .cust-since { font-size: 0.74rem; color: var(--text-2); margin-top: 1px; }
+
+    /* Booking count badge */
+    .booking-count {
+      font-size: 0.78rem; font-weight: 700;
+      background: var(--accent-bg); color: var(--accent);
+      padding: 2px 9px; border-radius: 20px; border: 1px solid rgba(74,222,128,0.2);
+    }
+
+    /* No-show badge */
+    .noshow-count {
+      font-size: 0.78rem; font-weight: 700;
+      background: rgba(239,68,68,0.08); color: var(--danger);
+      padding: 2px 9px; border-radius: 20px; border: 1px solid rgba(239,68,68,0.2);
+    }
+    .noshow-count.none { background: var(--surface-2); color: var(--text-2); border-color: var(--border); }
+
+    /* Action button */
+    .btn-view {
+      padding: 4px 10px;
+      background: transparent; border: 1px solid var(--border); color: var(--text-2);
+      border-radius: 6px; font-size: 0.74rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; white-space: nowrap;
+      transition: border-color var(--ease), color var(--ease);
+    }
+    .btn-view:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Pagination */
+    .pagination {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 18px; border-top: 1px solid var(--border);
+      font-size: 0.8rem; color: var(--text-2);
+    }
+    .page-btns { display: flex; gap: 4px; }
+    .page-btn {
+      width: 30px; height: 30px;
+      border: 1px solid var(--border); background: transparent; color: var(--text-2);
+      border-radius: 6px; font-size: 0.8rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color var(--ease), color var(--ease), background var(--ease);
+    }
+    .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .page-btn.current { background: var(--accent); color: #0a0a0f; border-color: var(--accent); font-weight: 700; }
+
+    /* ── Hamburger + sidebar overlay ── */
+    .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; flex-shrink: 0; }
+    .hamburger:hover { background: rgba(255,255,255,0.06); }
+    .hamburger span { display: block; width: 18px; height: 2px; background: var(--text-2); border-radius: 2px; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
+    .sidebar-overlay.active { display: block; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 200; }
+      .sidebar.open { transform: none; }
+      .main { margin-left: 0; }
+      .data-table thead th:nth-child(4),
+      .data-table tbody td:nth-child(4),
+      .data-table thead th:nth-child(5),
+      .data-table tbody td:nth-child(5) { display: none; }
+    }
+    @media (max-width: 480px) {
+      .content { padding: 16px; }
+      .stat-strip { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <script type="module">
+    import { requireAuth, signOut } from './js/auth.js'
+    requireAuth()
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="signout"]')) {
+        e.preventDefault()
+        signOut()
+      }
+    })
+  </script>
+
+  <!-- Sidebar -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar">
+    <a href="dashboard.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">&#128197;</div>
+      <span class="sidebar-logo-text">MCBook</span>
+    </a>
+    <span class="nav-section-label">Main</span>
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon">&#9707;</span> Dashboard</a>
+    <a href="bookings.html"  class="nav-link"><span class="nav-icon">&#128203;</span> Bookings</a>
+    <a href="customers.html" class="nav-link active"><span class="nav-icon">&#128100;</span> Customers</a>
+    <span class="nav-section-label">Setup</span>
+    <a href="services.html"     class="nav-link"><span class="nav-icon">&#10024;</span> Services</a>
+    <a href="availability.html"      class="nav-link"><span class="nav-icon">&#128197;</span> Availability</a>
+    <a href="stripe-onboarding.html" class="nav-link"><span class="nav-icon">&#128176;</span> Payouts</a>
+    <a href="embed.html"             class="nav-link"><span class="nav-icon">&#128279;</span> Share</a>
+    <span class="nav-section-label">Account</span>
+    <a href="settings.html" class="nav-link"><span class="nav-icon">&#9881;&#65039;</span> Settings</a>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">JS</div>
+        <div>
+          <div class="sidebar-user-name">Jane's Studio</div>
+          <div class="sidebar-user-role">Business Owner</div>
+        </div>
+      </div>
+      <a href="#" class="nav-link" data-action="signout"><span class="nav-icon">&#10148;</span> Sign Out</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Open menu"><span></span><span></span><span></span></button>
+      <span class="topbar-title">Customers</span>
+      <div class="topbar-date">Monday, 7 April 2025</div>
+    </header>
+
+    <main class="content">
+
+      <!-- Summary chips -->
+      <div class="stat-strip">
+        <div class="stat-chip">
+          <div class="stat-chip-icon blue">&#128100;</div>
+          <div>
+            <div class="stat-chip-val">—</div>
+            <div class="stat-chip-label">Total Customers</div>
+          </div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-chip-icon green">&#128200;</div>
+          <div>
+            <div class="stat-chip-val">—</div>
+            <div class="stat-chip-label">New This Month</div>
+          </div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-chip-icon amber">&#11088;</div>
+          <div>
+            <div class="stat-chip-val">—</div>
+            <div class="stat-chip-label">Repeat Customers</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <input type="search" class="filter-input" placeholder="&#128269; Search by name, email or phone…">
+        <select class="filter-select">
+          <option>All Customers</option>
+          <option>New (last 30 days)</option>
+          <option>Repeat (3+ bookings)</option>
+          <option>With No-shows</option>
+        </select>
+      </div>
+
+      <!-- Customers table -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <span class="table-card-title">All Customers</span>
+          <span class="table-count"></span>
+        </div>
+
+        <div class="table-scroll"><table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Bookings</th>
+              <th>No-shows</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table></div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <span id="pagination-label"></span>
+          <div class="page-btns" id="pagination-btns"></div>
+        </div>
+
+      </div>
+      <!-- /table-card -->
+
+    </main>
+  </div>
+
+  <script type="module" src="./js/pages/customers.js"></script>
+  <script>
+    var _hbg = document.getElementById('hamburger'), _sb = document.querySelector('.sidebar'), _ov = document.getElementById('sidebar-overlay')
+    _hbg && _hbg.addEventListener('click', function() { _sb.classList.toggle('open'); _ov.classList.toggle('active') })
+    _ov  && _ov.addEventListener('click',  function() { _sb.classList.remove('open'); _ov.classList.remove('active') })
+  </script>
+</body>
+</html>

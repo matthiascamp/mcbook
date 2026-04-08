@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Services — MCBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #111118;
+      --surface-2:   #14141d;
+      --border:      #1e1e2e;
+      --accent:      #4ade80;
+      --accent-dim:  rgba(74,222,128,0.75);
+      --accent-bg:   rgba(74,222,128,0.07);
+      --accent-glow: 0 0 12px rgba(74,222,128,0.15);
+      --text:        #ffffff;
+      --text-2:      #8b8b9e;
+      --warning:     #f59e0b;
+      --danger:      #ef4444;
+      --radius-sm:   8px;
+      --radius:      12px;
+      --sidebar-w:   228px;
+      --topbar-h:    60px;
+      --ease:        0.2s ease;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Scrollbars ── */
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(74,222,128,0.35); }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+    }
+
+    /* ══════════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════════ */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 100; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: rgba(74,222,128,0.2) transparent;
+    }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(74,222,128,0.2); }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(74,222,128,0.45); }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 9px;
+      padding: 18px 18px 16px; border-bottom: 1px solid var(--border); text-decoration: none;
+    }
+    .sidebar-logo-icon {
+      width: 30px; height: 30px; background: var(--accent-bg);
+      border: 1px solid rgba(74,222,128,0.2); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0;
+    }
+    .sidebar-logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, #4ade80, #86efac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-section-label {
+      padding: 18px 18px 5px; font-size: 0.62rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.2);
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 9px; padding: 9px 18px;
+      color: var(--text-2); text-decoration: none; font-size: 0.835rem; font-weight: 500;
+      letter-spacing: -0.01em; border-right: 2px solid transparent;
+      transition: color var(--ease), background var(--ease), border-color var(--ease);
+    }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .nav-link.active { color: var(--accent); background: var(--accent-bg); border-right-color: var(--accent); }
+    .nav-icon { width: 16px; text-align: center; font-size: 0.9rem; flex-shrink: 0; opacity: 0.75; }
+    .nav-link.active .nav-icon { opacity: 1; }
+    .sidebar-footer { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); }
+    .sidebar-user { display: flex; align-items: center; gap: 9px; }
+    .sidebar-avatar {
+      width: 30px; height: 30px; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700; color: var(--text-2); flex-shrink: 0;
+    }
+    .sidebar-user-name { font-size: 0.8rem; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+    .sidebar-user-role { font-size: 0.7rem; color: var(--text-2); margin-top: 1px; }
+
+    /* ══════════════════════════════════════
+       MAIN LAYOUT
+    ══════════════════════════════════════ */
+    .main { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: -0.02em; }
+    .topbar-right { display: flex; align-items: center; gap: 14px; }
+    .topbar-date { font-size: 0.78rem; color: var(--text-2); }
+    .content { flex: 1; padding: 24px; }
+
+    /* ══════════════════════════════════════
+       PAGE — SERVICES
+    ══════════════════════════════════════ */
+
+    .btn-primary {
+      padding: 8px 16px;
+      background: var(--accent); color: #0a0a0f;
+      border: 1px solid var(--accent); border-radius: var(--radius-sm);
+      font-size: 0.85rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; white-space: nowrap;
+      transition: filter var(--ease), box-shadow var(--ease);
+    }
+    .btn-primary:hover { filter: brightness(1.08); box-shadow: var(--accent-glow); }
+
+    /* Services list */
+    .services-list { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Service card */
+    .service-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      transition: border-color var(--ease);
+    }
+    .service-card:hover { border-color: rgba(74,222,128,0.18); }
+    .service-card-main {
+      display: grid; grid-template-columns: auto 1fr auto;
+      align-items: center; gap: 18px; padding: 18px 20px;
+    }
+
+    /* Service dot icons */
+    .service-dot {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+    }
+    .dot-blue   { background: rgba(74,222,128,0.07); }
+    .dot-green  { background: rgba(74,222,128,0.12); }
+    .dot-amber  { background: rgba(245,158,11,0.08); }
+    .dot-purple { background: rgba(167,139,250,0.10); }
+
+    .service-info { min-width: 0; }
+    .service-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 5px; }
+    .service-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .service-tag {
+      font-size: 0.72rem; font-weight: 500;
+      padding: 2px 9px; border-radius: 20px;
+      background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border);
+    }
+    .service-tag.price { background: var(--accent-bg); color: var(--accent); border-color: rgba(74,222,128,0.2); font-weight: 700; }
+    .service-tag.nosho { background: rgba(239,68,68,0.08); color: var(--danger); border-color: rgba(239,68,68,0.2); }
+
+    /* Service actions */
+    .service-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .service-active-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-2); }
+
+    /* Toggle switch */
+    .toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: var(--border); border-radius: 20px; cursor: pointer;
+      transition: background var(--ease);
+    }
+    .toggle input:checked + .toggle-track { background: var(--accent); }
+    .toggle-thumb {
+      position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px;
+      background: var(--text); border-radius: 50%;
+      transition: transform var(--ease);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(16px); }
+
+    .service-edit-btns { display: flex; gap: 6px; }
+    .btn-edit {
+      padding: 4px 10px;
+      background: transparent; border: 1px solid var(--border); color: var(--text-2);
+      border-radius: 6px; font-size: 0.74rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: border-color var(--ease), color var(--ease);
+    }
+    .btn-edit:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-delete {
+      padding: 4px 10px;
+      background: transparent; border: 1px solid transparent; color: var(--text-2);
+      border-radius: 6px; font-size: 0.74rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: color var(--ease), border-color var(--ease), background var(--ease);
+    }
+    .btn-delete:hover { color: var(--danger); border-color: var(--danger); background: rgba(239,68,68,0.08); }
+
+    /* Add new service form */
+    .add-service-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-top: 20px;
+    }
+    .add-service-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .add-service-header-title { font-size: 0.88rem; font-weight: 700; }
+    .add-service-body { padding: 20px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .field label {
+      display: block; font-size: 0.68rem; font-weight: 600;
+      color: var(--text-2); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px;
+    }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 0.875rem; font-family: inherit;
+      color: var(--text); background: var(--surface-2);
+      outline: none; transition: border-color var(--ease), box-shadow var(--ease);
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--accent); box-shadow: var(--accent-glow);
+    }
+    .field input::placeholder, .field textarea::placeholder { color: var(--text-2); opacity: 0.6; }
+    .field.field-locked { opacity: 0.35; pointer-events: none; user-select: none; }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+    .btn-cancel {
+      padding: 8px 16px;
+      background: transparent; border: 1px solid var(--border); color: var(--text-2);
+      border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: border-color var(--ease), color var(--ease);
+    }
+    .btn-cancel:hover { border-color: var(--text-2); color: var(--text); }
+
+    /* ── Hamburger + sidebar overlay ── */
+    .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; flex-shrink: 0; }
+    .hamburger:hover { background: rgba(255,255,255,0.06); }
+    .hamburger span { display: block; width: 18px; height: 2px; background: var(--text-2); border-radius: 2px; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
+    .sidebar-overlay.active { display: block; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 200; }
+      .sidebar.open { transform: none; }
+      .main { margin-left: 0; }
+      .form-grid   { grid-template-columns: 1fr; }
+      .form-grid-3 { grid-template-columns: 1fr 1fr; }
+      .service-card-main { grid-template-columns: auto 1fr; }
+      .service-actions { display: none; }
+    }
+    @media (max-width: 480px) {
+      .content { padding: 16px; }
+      .form-grid-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <script type="module">
+    import { requireAuth, signOut } from './js/auth.js'
+    requireAuth()
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="signout"]')) {
+        e.preventDefault()
+        signOut()
+      }
+    })
+  </script>
+
+  <!-- Sidebar -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar">
+    <a href="dashboard.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">&#128197;</div>
+      <span class="sidebar-logo-text">MCBook</span>
+    </a>
+    <span class="nav-section-label">Main</span>
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon">&#9707;</span> Dashboard</a>
+    <a href="bookings.html"  class="nav-link"><span class="nav-icon">&#128203;</span> Bookings</a>
+    <a href="customers.html" class="nav-link"><span class="nav-icon">&#128100;</span> Customers</a>
+    <span class="nav-section-label">Setup</span>
+    <a href="services.html"     class="nav-link active"><span class="nav-icon">&#10024;</span> Services</a>
+    <a href="availability.html"      class="nav-link"><span class="nav-icon">&#128197;</span> Availability</a>
+    <a href="stripe-onboarding.html" class="nav-link"><span class="nav-icon">&#128176;</span> Payouts</a>
+    <a href="embed.html"             class="nav-link"><span class="nav-icon">&#128279;</span> Share</a>
+    <span class="nav-section-label">Account</span>
+    <a href="settings.html" class="nav-link"><span class="nav-icon">&#9881;&#65039;</span> Settings</a>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">JS</div>
+        <div>
+          <div class="sidebar-user-name">Jane's Studio</div>
+          <div class="sidebar-user-role">Business Owner</div>
+        </div>
+      </div>
+      <a href="#" class="nav-link" data-action="signout"><span class="nav-icon">&#10148;</span> Sign Out</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Open menu"><span></span><span></span><span></span></button>
+      <span class="topbar-title">Services</span>
+      <div class="topbar-right">
+        <span class="topbar-date">Monday, 7 April 2025</span>
+        <button class="btn-primary">+ Add New Service</button>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- Services list -->
+      <div class="services-list">
+      </div>
+      <!-- /services-list -->
+
+      <!-- ── Add new service form ── -->
+      <div class="add-service-panel">
+        <div class="add-service-header">
+          <span style="font-size:1.1rem;">&#43;</span>
+          <span class="add-service-header-title">Add New Service</span>
+        </div>
+        <div class="add-service-body">
+
+          <div class="form-grid">
+            <div class="field">
+              <label>Service Name</label>
+              <input type="text" placeholder="e.g. Deep Conditioning">
+            </div>
+            <div class="field">
+              <label>Description (optional)</label>
+              <input type="text" placeholder="Short description shown to customers">
+            </div>
+          </div>
+
+          <div class="form-grid form-grid-3">
+            <div class="field">
+              <label>Duration</label>
+              <select>
+                <option>15 min</option>
+                <option>20 min</option>
+                <option selected>30 min</option>
+                <option>45 min</option>
+                <option>1 hour</option>
+                <option>1.5 hours</option>
+                <option>2 hours</option>
+              </select>
+            </div>
+            <div class="field" id="field-price">
+              <label>Price ($)</label>
+              <input type="number" id="svc-price" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="field" id="field-noshow">
+              <label>No-show Fee ($)</label>
+              <input type="number" id="svc-noshow" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="field">
+              <label>Payment Mode</label>
+              <select id="svc-pmode">
+                <option value="free" selected>Not collected through website</option>
+                <option value="after">Charge after appointment</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-cancel">Cancel</button>
+            <button class="btn-primary">Save Service</button>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script type="module" src="./js/pages/services.js"></script>
+  <script>
+    var _hbg = document.getElementById('hamburger'), _sb = document.querySelector('.sidebar'), _ov = document.getElementById('sidebar-overlay')
+    _hbg && _hbg.addEventListener('click', function() { _sb.classList.toggle('open'); _ov.classList.toggle('active') })
+    _ov  && _ov.addEventListener('click',  function() { _sb.classList.remove('open'); _ov.classList.remove('active') })
+  </script>
+</body>
+</html>

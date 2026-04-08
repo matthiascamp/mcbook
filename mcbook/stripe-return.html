@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payouts Setup — MCBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #111118; --border: #1e1e2e;
+      --accent: #4ade80; --accent-bg: rgba(74,222,128,0.07);
+      --text: #ffffff; --text-2: #8b8b9e;
+      --danger: #ef4444; --warning: #f59e0b;
+      --radius: 12px; --radius-sm: 8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 40px;
+      max-width: 480px; width: 100%; text-align: center;
+    }
+    .icon { font-size: 3rem; margin-bottom: 20px; display: block; }
+    h1 { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 10px; }
+    p  { font-size: 0.85rem; color: var(--text-2); line-height: 1.6; margin-bottom: 24px; }
+
+    /* Status-specific colours */
+    .status-enabled  h1 { color: var(--accent); }
+    .status-pending  h1 { color: var(--warning); }
+    .status-restricted h1 { color: var(--danger); }
+
+    .status-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      font-size: 0.8rem; margin-bottom: 10px;
+    }
+    .status-row-label { color: var(--text-2); }
+    .status-row-val.yes { color: var(--accent); font-weight: 700; }
+    .status-row-val.no  { color: var(--warning); font-weight: 700; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 11px 20px; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.88rem; font-weight: 700;
+      cursor: pointer; text-decoration: none; transition: opacity 0.18s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: #0a0a0f; border: none; }
+    .btn-secondary {
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid rgba(74,222,128,0.15);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 24px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="card">
+    <div class="spinner" id="spinner"></div>
+    <p style="color:var(--text-2)">Verifying your account with Stripe…</p>
+  </div>
+
+  <script type="module">
+    import { requireAuth } from './js/auth.js'
+
+    const SUPABASE_URL = 'https://uijudgnqawtvjyjuyuwo.supabase.co'
+
+    const session = await requireAuth()
+    if (!session) throw new Error('No session')
+
+    // Call our Edge Function to get the live account status from Stripe
+    let data
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-connect-account`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+      data = await res.json()
+      // Surface function errors rather than silently defaulting to pending
+      if (!res.ok || data.error) {
+        throw new Error(data.error ?? `HTTP ${res.status}`)
+      }
+    } catch (err) {
+      const card = document.getElementById('card')
+      card.innerHTML = `
+        <span class="icon">&#9888;&#65039;</span>
+        <h1 style="color:#ef4444">Could not verify status</h1>
+        <p>${err.message}</p>
+        <div class="btn-row" style="margin-top:24px">
+          <a href="stripe-onboarding.html" class="btn btn-primary">Back to Payouts Setup</a>
+        </div>`
+      throw err
+    }
+
+    const card = document.getElementById('card')
+
+    if (data.status === 'enabled') {
+      // Fully verified — celebrate
+      card.className = 'card status-enabled'
+      card.innerHTML = `
+        <span class="icon">&#9989;</span>
+        <h1>You're all set!</h1>
+        <p>Your bank account has been verified and payouts are now enabled.
+           Once customers pay for bookings, funds will be automatically transferred
+           to your bank account each day.</p>
+        <div style="margin-bottom:20px">
+          <div class="status-row">
+            <span class="status-row-label">Charges enabled</span>
+            <span class="status-row-val yes">Yes</span>
+          </div>
+          <div class="status-row">
+            <span class="status-row-label">Payouts enabled</span>
+            <span class="status-row-val yes">Yes</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a>
+          ${data.dashboardUrl ? `<a href="${data.dashboardUrl}" target="_blank" class="btn btn-secondary">&#128200; Go to Stripe</a>` : ''}
+        </div>`
+
+    } else if (data.status === 'restricted') {
+      // Stripe needs more info — let them resume the hosted onboarding
+      card.className = 'card status-restricted'
+      card.innerHTML = `
+        <span class="icon">&#9888;&#65039;</span>
+        <h1>A few more details needed</h1>
+        <p>Stripe still needs to verify some information before payouts can be enabled.
+           Click below to pick up where you left off — it only takes a minute.</p>
+        <div class="btn-row">
+          <a href="stripe-onboarding.html" class="btn btn-primary">Complete verification</a>
+        </div>`
+
+    } else {
+      // Pending — onboarding submitted but not yet verified
+      card.className = 'card status-pending'
+      card.innerHTML = `
+        <span class="icon">&#9203;</span>
+        <h1>Verification in progress</h1>
+        <p>Thanks! Stripe is reviewing your details — this usually takes a few minutes.
+           You'll be able to accept payments once the review is complete.
+           You can check your status at any time from the Payouts page.</p>
+        <div style="margin-bottom:20px">
+          <div class="status-row">
+            <span class="status-row-label">Charges enabled</span>
+            <span class="status-row-val no">Pending</span>
+          </div>
+          <div class="status-row">
+            <span class="status-row-label">Payouts enabled</span>
+            <span class="status-row-val no">Pending</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a>
+          <a href="stripe-onboarding.html" class="btn btn-secondary">Check Status</a>
+        </div>`
+    }
+  </script>
+
+</body>
+</html>

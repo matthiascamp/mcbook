@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — MCBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ── */
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #111118;
+      --surface-2:   #14141d;
+      --border:      #1e1e2e;
+      --accent:      #4ade80;
+      --accent-dim:  rgba(74,222,128,0.75);
+      --accent-bg:   rgba(74,222,128,0.07);
+      --accent-glow: 0 0 12px rgba(74,222,128,0.15);
+      --text:        #ffffff;
+      --text-2:      #8b8b9e;
+      --warning:     #f59e0b;
+      --danger:      #ef4444;
+      --radius-sm:   8px;
+      --radius:      12px;
+      --sidebar-w:   228px;
+      --topbar-h:    60px;
+      --ease:        0.2s ease;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Scrollbars ── */
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(74,222,128,0.35); }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ══════════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════════ */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      z-index: 100; overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(74,222,128,0.2) transparent;
+    }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(74,222,128,0.2); }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(74,222,128,0.45); }
+
+    /* Wordmark */
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 9px;
+      padding: 18px 18px 16px;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+    }
+    .sidebar-logo-icon {
+      width: 30px; height: 30px;
+      background: var(--accent-bg);
+      border: 1px solid rgba(74,222,128,0.2);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; flex-shrink: 0;
+    }
+    /* MCBook wordmark with gradient */
+    .sidebar-logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #4ade80, #86efac);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Section labels */
+    .nav-section-label {
+      padding: 18px 18px 5px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.2);
+    }
+
+    /* Nav links */
+    .nav-link {
+      display: flex; align-items: center; gap: 9px;
+      padding: 9px 18px;
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: 0.835rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      border-right: 2px solid transparent;
+      transition: color var(--ease), background var(--ease), border-color var(--ease);
+    }
+    .nav-link:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+    /* Active: faint green tint + left border in accent */
+    .nav-link.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-right-color: var(--accent);
+    }
+    .nav-icon { width: 16px; text-align: center; font-size: 0.9rem; flex-shrink: 0; opacity: 0.75; }
+    .nav-link.active .nav-icon { opacity: 1; }
+
+    /* User footer */
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+    }
+    .sidebar-user { display: flex; align-items: center; gap: 9px; }
+    .sidebar-avatar {
+      width: 30px; height: 30px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700; color: var(--text-2); flex-shrink: 0;
+    }
+    .sidebar-user-name { font-size: 0.8rem; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+    .sidebar-user-role { font-size: 0.7rem; color: var(--text-2); margin-top: 1px; }
+
+    /* ══════════════════════════════════════
+       MAIN LAYOUT
+    ══════════════════════════════════════ */
+    .main { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+
+    .topbar {
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: -0.02em; }
+    .topbar-actions { display: flex; align-items: center; gap: 14px; }
+    .topbar-date { font-size: 0.78rem; color: var(--text-2); }
+    .topbar-badge { position: relative; cursor: pointer; color: var(--text-2); font-size: 1.05rem; }
+    .topbar-badge-dot {
+      position: absolute; top: -2px; right: -2px;
+      width: 7px; height: 7px;
+      background: var(--danger); border-radius: 50%;
+      border: 2px solid var(--surface);
+    }
+
+    .content { flex: 1; padding: 24px; }
+
+    /* ══════════════════════════════════════
+       PAGE — DASHBOARD HOME
+    ══════════════════════════════════════ */
+
+    /* Stat cards */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 14px;
+      transition: border-color var(--ease), background var(--ease);
+    }
+    .stat-card:hover {
+      border-color: rgba(74,222,128,0.25);
+      background: rgba(74,222,128,0.03);
+    }
+    .stat-card-top { display: flex; align-items: center; justify-content: space-between; }
+    .stat-card-label {
+      font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-2);
+    }
+    .stat-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.95rem;
+    }
+    .stat-icon.green { background: var(--accent-bg); color: var(--accent); }
+    .stat-icon.amber { background: rgba(245,158,11,0.08); color: var(--warning); }
+    .stat-icon.red   { background: rgba(239,68,68,0.08); color: var(--danger); }
+
+    .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+    .stat-delta { font-size: 0.74rem; color: var(--text-2); margin-top: 3px; }
+    .stat-delta.up   { color: var(--accent); }
+    .stat-delta.down { color: var(--danger); }
+
+    /* Two-column layout */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    /* Panel / card */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color var(--ease);
+    }
+    .panel:hover { border-color: rgba(74,222,128,0.18); }
+    .panel-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.82rem; font-weight: 700; letter-spacing: -0.01em; }
+    .panel-badge {
+      background: var(--accent-bg);
+      color: var(--accent);
+      font-size: 0.68rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+      letter-spacing: 0.02em;
+    }
+    .section-link {
+      font-size: 0.75rem; color: var(--text-2); text-decoration: none;
+      transition: color var(--ease);
+    }
+    .section-link:hover { color: var(--accent); }
+
+    /* Today's schedule items */
+    .booking-list-item {
+      display: flex; align-items: center;
+      padding: 12px 18px; gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .booking-list-item:last-child { border-bottom: none; }
+    .booking-time {
+      font-size: 0.75rem; font-weight: 700;
+      color: var(--text-2); min-width: 60px;
+      letter-spacing: 0.01em;
+    }
+    .booking-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.68rem; font-weight: 700; color: var(--text-2); flex-shrink: 0;
+    }
+    .booking-info { flex: 1; min-width: 0; }
+    .booking-name { font-size: 0.82rem; font-weight: 600; letter-spacing: -0.01em; }
+    .booking-service { font-size: 0.72rem; color: var(--text-2); margin-top: 1px; }
+
+    /* Status pills — green=scheduled, grey=completed, amber=no-show */
+    .status-pill {
+      font-size: 0.68rem; font-weight: 600;
+      padding: 2px 9px; border-radius: 20px; flex-shrink: 0;
+      letter-spacing: 0.02em; border: 1px solid transparent;
+    }
+    .status-pill.scheduled { background: var(--accent-bg);           color: var(--accent);  border-color: rgba(74,222,128,0.2); }
+    .status-pill.completed { background: rgba(139,139,158,0.08);     color: var(--text-2);  border-color: rgba(139,139,158,0.15); }
+    .status-pill.noshow    { background: rgba(245,158,11,0.08);      color: var(--warning); border-color: rgba(245,158,11,0.2); }
+    .status-pill.cancelled { background: rgba(239,68,68,0.08);       color: var(--danger);  border-color: rgba(239,68,68,0.2); }
+
+    /* Upcoming items */
+    .upcoming-item {
+      display: flex; align-items: center;
+      padding: 11px 18px; gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .upcoming-item:last-child { border-bottom: none; }
+    .panel-empty {
+      padding: 20px 18px;
+      font-size: 0.8rem;
+      color: var(--text-2);
+      text-align: center;
+    }
+    .upcoming-date-box {
+      text-align: center; min-width: 40px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 5px 4px;
+    }
+    .upcoming-date-box .day {
+      display: block; font-size: 1rem; font-weight: 800;
+      letter-spacing: -0.02em; line-height: 1; color: var(--text);
+    }
+    .upcoming-date-box .mon {
+      display: block; font-size: 0.61rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--text-2); margin-top: 2px;
+    }
+    .upcoming-info { flex: 1; }
+    .upcoming-name { font-size: 0.82rem; font-weight: 600; letter-spacing: -0.01em; }
+    .upcoming-meta { font-size: 0.71rem; color: var(--text-2); margin-top: 1px; }
+
+    /* Revenue bar chart */
+    .chart-placeholder { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+    .chart-bar-row { display: flex; align-items: center; gap: 10px; }
+    .chart-label { font-size: 0.7rem; color: var(--text-2); min-width: 28px; text-align: right; letter-spacing: 0.02em; }
+    .chart-bar-wrap {
+      flex: 1; height: 6px;
+      background: var(--border); border-radius: 3px; overflow: hidden;
+    }
+    .chart-bar { height: 100%; background: var(--accent); border-radius: 3px; opacity: 0.75; }
+    .chart-val { font-size: 0.7rem; font-weight: 600; color: var(--text-2); min-width: 38px; text-align: right; }
+
+    /* Responsive */
+    /* ── Hamburger + sidebar overlay ── */
+    .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; flex-shrink: 0; }
+    .hamburger:hover { background: rgba(255,255,255,0.06); }
+    .hamburger span { display: block; width: 18px; height: 2px; background: var(--text-2); border-radius: 2px; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
+    .sidebar-overlay.active { display: block; }
+
+    @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 200; }
+      .sidebar.open { transform: none; }
+      .main { margin-left: 0; }
+    }
+    @media (max-width: 480px) { .stat-grid { grid-template-columns: 1fr 1fr; } .content { padding: 16px; } }
+  </style>
+</head>
+<body>
+
+  <script type="module">
+    import { requireAuth, signOut } from './js/auth.js'
+    requireAuth()
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="signout"]')) {
+        e.preventDefault()
+        signOut()
+      }
+    })
+  </script>
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <!-- ══════════════════════════════════════ SIDEBAR ══════════════════════════════════════ -->
+  <aside class="sidebar">
+    <a href="dashboard.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">&#128197;</div>
+      <span class="sidebar-logo-text">MCBook</span>
+    </a>
+
+    <span class="nav-section-label">Main</span>
+    <a href="dashboard.html" class="nav-link active"><span class="nav-icon">&#9707;</span> Dashboard</a>
+    <a href="bookings.html"  class="nav-link"><span class="nav-icon">&#128203;</span> Bookings</a>
+    <a href="customers.html" class="nav-link"><span class="nav-icon">&#128100;</span> Customers</a>
+
+    <span class="nav-section-label">Setup</span>
+    <a href="services.html"     class="nav-link"><span class="nav-icon">&#10024;</span> Services</a>
+    <a href="availability.html"      class="nav-link"><span class="nav-icon">&#128197;</span> Availability</a>
+    <a href="stripe-onboarding.html" class="nav-link"><span class="nav-icon">&#128176;</span> Payouts</a>
+    <a href="embed.html"             class="nav-link"><span class="nav-icon">&#128279;</span> Share</a>
+
+    <span class="nav-section-label">Account</span>
+    <a href="settings.html" class="nav-link"><span class="nav-icon">&#9881;&#65039;</span> Settings</a>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">JS</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">Jane's Studio</div>
+          <div class="sidebar-user-role">Business Owner</div>
+        </div>
+      </div>
+      <a href="#" class="nav-link" data-action="signout"><span class="nav-icon">&#10148;</span> Sign Out</a>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════ MAIN ══════════════════════════════════════ -->
+  <div class="main">
+
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Open menu"><span></span><span></span><span></span></button>
+      <span class="topbar-title">Dashboard</span>
+      <div class="topbar-actions">
+        <span class="topbar-date">Monday, 7 April 2025</span>
+        <span class="topbar-badge">&#128276;<span class="topbar-badge-dot"></span></span>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- Stat cards -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <span class="stat-card-label">Today's Bookings</span>
+            <div class="stat-icon green">&#128197;</div>
+          </div>
+          <div>
+            <div class="stat-value">—</div>
+            <div class="stat-delta up"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <span class="stat-card-label">This Week</span>
+            <div class="stat-icon green">&#128200;</div>
+          </div>
+          <div>
+            <div class="stat-value">—</div>
+            <div class="stat-delta up"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <span class="stat-card-label">Revenue (MTD)</span>
+            <div class="stat-icon amber">&#128178;</div>
+          </div>
+          <div>
+            <div class="stat-value">—</div>
+            <div class="stat-delta up"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <span class="stat-card-label">No-shows (MTD)</span>
+            <div class="stat-icon red">&#128683;</div>
+          </div>
+          <div>
+            <div class="stat-value">—</div>
+            <div class="stat-delta down"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two-column section -->
+      <div class="two-col">
+
+        <!-- Today's schedule -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Today's Schedule</span>
+            <span class="panel-badge"></span>
+          </div>
+
+        </div>
+
+        <!-- Right: upcoming + chart -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Upcoming</span>
+              <a href="bookings.html" class="section-link">View all</a>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Revenue — Last 7 Days</span>
+            </div>
+            <div class="chart-placeholder"></div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <script type="module" src="./js/pages/dashboard.js"></script>
+  <script>
+    var _hbg = document.getElementById('hamburger'), _sb = document.querySelector('.sidebar'), _ov = document.getElementById('sidebar-overlay')
+    _hbg && _hbg.addEventListener('click', function() { _sb.classList.toggle('open'); _ov.classList.toggle('active') })
+    _ov  && _ov.addEventListener('click',  function() { _sb.classList.remove('open'); _ov.classList.remove('active') })
+  </script>
+</body>
+</html>

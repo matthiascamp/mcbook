@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Embed Widget — MCBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #111118;
+      --surface-2:   #14141d;
+      --border:      #1e1e2e;
+      --accent:      #4ade80;
+      --accent-dim:  rgba(74,222,128,0.75);
+      --accent-bg:   rgba(74,222,128,0.07);
+      --accent-glow: 0 0 12px rgba(74,222,128,0.15);
+      --text:        #ffffff;
+      --text-2:      #8b8b9e;
+      --danger:      #ef4444;
+      --radius-sm:   8px;
+      --radius:      12px;
+      --sidebar-w:   228px;
+      --topbar-h:    60px;
+      --ease:        0.2s ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      z-index: 100; overflow-y: auto;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 9px;
+      padding: 18px 18px 16px;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+    }
+    .sidebar-logo-icon {
+      width: 30px; height: 30px; background: var(--accent-bg);
+      border: 1px solid rgba(74,222,128,0.2); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; flex-shrink: 0;
+    }
+    .sidebar-logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, #4ade80, #86efac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-section-label {
+      padding: 18px 18px 5px; font-size: 0.62rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.2);
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 9px;
+      padding: 9px 18px; color: var(--text-2); text-decoration: none;
+      font-size: 0.835rem; font-weight: 500; letter-spacing: -0.01em;
+      border-right: 2px solid transparent;
+      transition: color var(--ease), background var(--ease), border-color var(--ease);
+    }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .nav-link.active { color: var(--accent); background: var(--accent-bg); border-right-color: var(--accent); }
+    .nav-icon { width: 16px; text-align: center; font-size: 0.9rem; flex-shrink: 0; opacity: 0.75; }
+    .nav-link.active .nav-icon { opacity: 1; }
+    .sidebar-footer { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); }
+    .sidebar-user { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+    .sidebar-avatar {
+      width: 30px; height: 30px; background: var(--surface-2);
+      border: 1px solid var(--border); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700; color: var(--text-2); flex-shrink: 0;
+    }
+    .sidebar-user-name { font-size: 0.8rem; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+    .sidebar-user-role { font-size: 0.7rem; color: var(--text-2); margin-top: 1px; }
+
+    /* ── Main layout ── */
+    .main { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: -0.02em; }
+    .topbar-date  { font-size: 0.78rem; color: var(--text-2); }
+    .content { flex: 1; padding: 24px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+    }
+    .card-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-header-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--accent-bg); color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.95rem; flex-shrink: 0;
+    }
+    .card-title { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.01em; }
+    .card-sub   { font-size: 0.73rem; color: var(--text-2); margin-top: 2px; }
+    .card-body  { padding: 20px; }
+
+    /* ── Code snippet box ── */
+    .snippet-wrap {
+      position: relative;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .snippet-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .snippet-lang {
+      font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-2);
+    }
+    .copy-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 6px;
+      background: var(--accent-bg); border: 1px solid rgba(74,222,128,0.2);
+      color: var(--accent); font-family: inherit; font-size: 0.72rem; font-weight: 700;
+      cursor: pointer; transition: background var(--ease), box-shadow var(--ease);
+    }
+    .copy-btn:hover { background: rgba(74,222,128,0.12); box-shadow: var(--accent-glow); }
+    .copy-btn.copied { color: #fff; background: rgba(74,222,128,0.2); border-color: rgba(74,222,128,0.4); }
+
+    .snippet-code {
+      padding: 16px 18px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.82rem;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-all;
+      overflow-x: auto;
+      user-select: all;
+    }
+    /* Syntax-like colouring */
+    .tok-tag     { color: #7dd3fc; }  /* < > tags — blue */
+    .tok-attr    { color: #86efac; }  /* attributes — green */
+    .tok-val     { color: #fcd34d; }  /* values — amber */
+    .tok-id      { color: #f9a8d4; }  /* the business ID — pink */
+
+    /* ── Step list ── */
+    .steps { display: flex; flex-direction: column; gap: 14px; }
+    .step  { display: flex; align-items: flex-start; gap: 12px; }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--accent-bg); border: 1px solid rgba(74,222,128,0.25);
+      color: var(--accent); font-size: 0.72rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-text { font-size: 0.83rem; color: var(--text-2); line-height: 1.55; }
+    .step-text strong { color: var(--text); font-weight: 600; }
+    .step-text code {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 6px;
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem;
+      color: var(--accent);
+    }
+
+    /* ── URL row ── */
+    .url-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .url-input {
+      flex: 1;
+      padding: 9px 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-2);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.75rem;
+      outline: none;
+      min-width: 0;
+      cursor: text;
+      user-select: all;
+    }
+    .url-input:focus { border-color: rgba(74,222,128,0.35); }
+    .bio-textarea {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.85rem;
+      resize: vertical;
+      outline: none;
+      transition: border-color var(--ease);
+      min-height: 72px;
+    }
+    .bio-textarea:focus { border-color: rgba(74,222,128,0.35); }
+    .bio-textarea::placeholder { color: var(--text-3); }
+    .btn-save {
+      padding: 8px 16px;
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter var(--ease);
+    }
+    .btn-save:hover { filter: brightness(1.1); }
+    .btn-save:disabled { opacity: 0.5; cursor: default; }
+    .card-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+    .page-field { margin-bottom: 14px; }
+    .field-label { display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+    .field-hint  { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-3); }
+    .promo-note  { font-size: 0.74rem; color: var(--text-3); line-height: 1.5; }
+    .promo-note a { color: rgba(74,222,128,0.55); text-decoration: none; transition: color var(--ease); }
+    .promo-note a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+    /* ── Preview link ── */
+    .preview-link {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 14px; border-radius: var(--radius-sm);
+      background: var(--accent-bg); border: 1px solid rgba(74,222,128,0.2);
+      color: var(--accent); font-size: 0.8rem; font-weight: 600;
+      text-decoration: none; transition: background var(--ease), box-shadow var(--ease);
+    }
+    .preview-link:hover { background: rgba(74,222,128,0.12); box-shadow: var(--accent-glow); }
+
+    /* ── Hamburger + sidebar overlay ── */
+    .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; flex-shrink: 0; }
+    .hamburger:hover { background: rgba(255,255,255,0.06); }
+    .hamburger span { display: block; width: 18px; height: 2px; background: var(--text-2); border-radius: 2px; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
+    .sidebar-overlay.active { display: block; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 200; }
+      .sidebar.open { transform: none; }
+      .main { margin-left: 0; }
+    }
+    @media (max-width: 480px) { .content { padding: 16px; } }
+  </style>
+</head>
+<body>
+
+  <script type="module">
+    import { requireAuth, signOut } from './js/auth.js'
+    import { supabase } from './js/supabase.js'
+
+    const session = await requireAuth()
+    if (!session) throw new Error('No session')
+
+    // ── Load client details ───────────────────────────────────────────────────
+    const { data: client } = await supabase
+      .from('clients')
+      .select('id, business_name, email, booking_page_bio, booking_page_description, booking_page_location')
+      .eq('id', session.user.id)
+      .single()
+
+    const businessId   = client?.id ?? session.user.id
+    const businessName = client?.business_name ?? 'your business'
+
+    // ── Populate sidebar ──────────────────────────────────────────────────────
+    const initials = (client?.business_name ?? 'MB').slice(0, 2).toUpperCase()
+    document.getElementById('sidebar-avatar').textContent = initials
+    document.getElementById('sidebar-name').textContent   = businessName
+
+    // ── Booking page URL ──────────────────────────────────────────────────────
+    const bookingPageUrl = `https://matthiasdev.com/mcbook/book.html?id=${businessId}`
+    document.getElementById('booking-page-url').value = bookingPageUrl
+    document.getElementById('open-page-btn').href = bookingPageUrl
+
+    // Populate page fields
+    const bioEl  = document.getElementById('bio-textarea')
+    const descEl = document.getElementById('desc-textarea')
+    const locEl  = document.getElementById('location-input')
+    if (client?.booking_page_bio)         bioEl.value  = client.booking_page_bio
+    if (client?.booking_page_description) descEl.value = client.booking_page_description
+    if (client?.booking_page_location)    locEl.value  = client.booking_page_location
+
+    // Copy booking page URL
+    document.getElementById('copy-url-btn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(bookingPageUrl)
+      } catch {
+        const inp = document.getElementById('booking-page-url')
+        inp.select(); document.execCommand('copy')
+      }
+      const btn = document.getElementById('copy-url-btn')
+      btn.textContent = '✓ Copied!'
+      btn.classList.add('copied')
+      setTimeout(() => { btn.innerHTML = '&#128279; Copy link'; btn.classList.remove('copied') }, 2000)
+    })
+
+    // Save page customisation
+    document.getElementById('save-bio-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('save-bio-btn')
+      btn.disabled = true; btn.textContent = 'Saving…'
+      const { error } = await supabase.from('clients').update({
+        booking_page_bio:         bioEl.value.trim()  || null,
+        booking_page_description: descEl.value.trim() || null,
+        booking_page_location:    locEl.value.trim()  || null,
+      }).eq('id', session.user.id)
+      btn.disabled = false
+      if (error) {
+        btn.textContent = 'Error saving'
+        console.error('[MCBook] Save error:', error)
+        setTimeout(() => { btn.textContent = 'Save page' }, 3000)
+      } else {
+        btn.textContent = '✓ Saved'
+        setTimeout(() => { btn.textContent = 'Save page' }, 2000)
+      }
+    })
+
+    // ── Build the snippet ─────────────────────────────────────────────────────
+    const widgetUrl = 'https://matthiasdev.com/mcbook/widget.js'
+    const rawSnippet = `<script\n  src="${widgetUrl}"\n  data-business-id="${businessId}"\n><\/script>`
+
+    document.getElementById('raw-snippet').value = rawSnippet
+    document.getElementById('preview-link').href = `widget-demo.html?id=${businessId}`
+
+    // Render syntax-highlighted version
+    document.getElementById('snippet-display').innerHTML =
+      `<span class="tok-tag">&lt;script</span>\n` +
+      `  <span class="tok-attr">src</span>=<span class="tok-val">"${widgetUrl}"</span>\n` +
+      `  <span class="tok-attr">data-business-id</span>=<span class="tok-val">"<span class="tok-id">${businessId}</span>"</span>\n` +
+      `<span class="tok-tag">&gt;&lt;/script&gt;</span>`
+
+    // ── Copy button ───────────────────────────────────────────────────────────
+    document.getElementById('copy-btn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(rawSnippet)
+        const btn = document.getElementById('copy-btn')
+        btn.textContent = '✓ Copied!'
+        btn.classList.add('copied')
+        setTimeout(() => { btn.innerHTML = '&#128203; Copy'; btn.classList.remove('copied') }, 2000)
+      } catch {
+        // Fallback: select the hidden textarea
+        const ta = document.getElementById('raw-snippet')
+        ta.style.display = 'block'
+        ta.select()
+        document.execCommand('copy')
+        ta.style.display = 'none'
+      }
+    })
+
+    // ── Sign out ──────────────────────────────────────────────────────────────
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="signout"]')) { e.preventDefault(); signOut() }
+    })
+
+    // ── Topbar date ───────────────────────────────────────────────────────────
+    document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-AU', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    })
+  </script>
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <a href="dashboard.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">&#128197;</div>
+      <span class="sidebar-logo-text">MCBook</span>
+    </a>
+
+    <span class="nav-section-label">Main</span>
+    <a href="dashboard.html"  class="nav-link"><span class="nav-icon">&#9707;</span> Dashboard</a>
+    <a href="bookings.html"   class="nav-link"><span class="nav-icon">&#128203;</span> Bookings</a>
+    <a href="customers.html"  class="nav-link"><span class="nav-icon">&#128100;</span> Customers</a>
+
+    <span class="nav-section-label">Setup</span>
+    <a href="services.html"          class="nav-link"><span class="nav-icon">&#10024;</span> Services</a>
+    <a href="availability.html"      class="nav-link"><span class="nav-icon">&#128197;</span> Availability</a>
+    <a href="stripe-onboarding.html" class="nav-link"><span class="nav-icon">&#128176;</span> Payouts</a>
+    <a href="embed.html"             class="nav-link active"><span class="nav-icon">&#128279;</span> Share</a>
+
+    <span class="nav-section-label">Account</span>
+    <a href="settings.html" class="nav-link"><span class="nav-icon">&#9881;&#65039;</span> Settings</a>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar">MB</div>
+        <div>
+          <div class="sidebar-user-name" id="sidebar-name">Loading…</div>
+          <div class="sidebar-user-role">Business Owner</div>
+        </div>
+      </div>
+      <a href="#" class="nav-link" data-action="signout"><span class="nav-icon">&#10148;</span> Sign Out</a>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Open menu"><span></span><span></span><span></span></button>
+      <span class="topbar-title">Share &amp; Embed</span>
+      <div class="topbar-actions">
+        <span class="topbar-date" id="topbar-date"></span>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- Booking page card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">&#127758;</div>
+          <div>
+            <div class="card-title">Your Booking Page</div>
+            <div class="card-sub">A ready-made website your clients can visit to book with you — share this link anywhere.</div>
+          </div>
+        </div>
+        <div class="card-body">
+
+          <div class="url-row">
+            <input type="text" class="url-input" id="booking-page-url" readonly placeholder="Loading…">
+            <button class="copy-btn" id="copy-url-btn">&#128279; Copy link</button>
+          </div>
+          <div style="margin-top:10px;">
+            <a id="open-page-btn" href="#" target="_blank" class="preview-link">&#9654;&#65038; Open page</a>
+          </div>
+
+          <hr class="card-divider">
+
+          <div class="page-field">
+            <label class="field-label">Tagline <span class="field-hint">(shown below your business name)</span></label>
+            <textarea class="bio-textarea" id="bio-textarea" placeholder="e.g. Brisbane's friendliest barber — walk-ins welcome"></textarea>
+          </div>
+
+          <div class="page-field">
+            <label class="field-label">About your business <span class="field-hint">(optional — a short description for visitors)</span></label>
+            <textarea class="bio-textarea" id="desc-textarea" style="min-height:80px;" placeholder="e.g. We've been serving the local community since 2015. Specialising in cuts, colour, and styling for all hair types."></textarea>
+          </div>
+
+          <div class="page-field">
+            <label class="field-label">Location <span class="field-hint">(optional — suburb or full address)</span></label>
+            <input type="text" class="url-input" id="location-input" placeholder="e.g. Fortitude Valley, Brisbane QLD" style="cursor:text;color:var(--text);">
+          </div>
+
+          <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <button class="btn-save" id="save-bio-btn">Save page</button>
+            <div class="promo-note">
+              &#127760; Don't have a full website? <a href="https://matthiasdev.com" target="_blank" rel="noopener">I can build you a professional one</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Embed code card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">&#128279;</div>
+          <div>
+            <div class="card-title">Your Embed Code</div>
+            <div class="card-sub">Paste this into any website to add your booking widget.</div>
+          </div>
+        </div>
+        <div class="card-body">
+
+          <div class="snippet-wrap">
+            <div class="snippet-topbar">
+              <span class="snippet-lang">HTML</span>
+              <button class="copy-btn" id="copy-btn">&#128203; Copy</button>
+            </div>
+            <div class="snippet-code" id="snippet-display"></div>
+          </div>
+
+          <!-- Hidden textarea used as copy fallback -->
+          <textarea id="raw-snippet" style="display:none;position:absolute;left:-9999px" readonly></textarea>
+
+          <div style="margin-top:16px">
+            <a id="preview-link" href="widget-demo.html" target="_blank" class="preview-link">
+              &#9654;&#65038; Preview widget
+            </a>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- How to install card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">&#128196;</div>
+          <div>
+            <div class="card-title">How to Install</div>
+            <div class="card-sub">Works on any website — WordPress, Squarespace, Wix, or custom HTML.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-text">
+                Copy the embed code above using the <strong>Copy</strong> button.
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-text">
+                Open the page on your website where you want the booking widget to appear.
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-text">
+                Paste the code into the <strong>HTML</strong> of that page — anywhere inside <code>&lt;body&gt;</code>.
+                On WordPress, use a <strong>Custom HTML</strong> block. On Squarespace, use a <strong>Code Block</strong>.
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-text">
+                The widget appears automatically and adapts to your site's colour scheme — no extra styling needed.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <script>
+    var _hbg = document.getElementById('hamburger'), _sb = document.querySelector('.sidebar'), _ov = document.getElementById('sidebar-overlay')
+    _hbg && _hbg.addEventListener('click', function() { _sb.classList.toggle('open'); _ov.classList.toggle('active') })
+    _ov  && _ov.addEventListener('click',  function() { _sb.classList.remove('open'); _ov.classList.remove('active') })
+  </script>
+</body>
+</html>

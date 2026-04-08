@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book an Appointment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #0a0a0f;
+      --surface: #111118;
+      --border:  #1e1e2e;
+      --accent:  #4ade80;
+      --text:    #ffffff;
+      --text-2:  #8b8b9e;
+      --text-3:  #55556a;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      background-image: radial-gradient(ellipse 80% 35% at 50% 0%, rgba(74,222,128,0.08) 0%, transparent 65%);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Header ── */
+    .page-header {
+      padding: 52px 24px 32px;
+      text-align: center;
+      max-width: 620px;
+      margin: 0 auto;
+      animation: fadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    .biz-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 13px;
+      background: rgba(74,222,128,0.07);
+      border: 1px solid rgba(74,222,128,0.22);
+      border-radius: 50px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      margin-bottom: 22px;
+    }
+    .biz-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.55; transform: scale(0.8); }
+    }
+    .biz-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 6vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.72) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 14px;
+    }
+    .biz-bio {
+      font-size: 0.95rem;
+      color: var(--text-2);
+      line-height: 1.7;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+    .biz-desc {
+      font-size: 0.85rem;
+      color: var(--text-2);
+      line-height: 1.75;
+      max-width: 480px;
+      margin: 14px auto 0;
+      opacity: 0.8;
+    }
+    .biz-location {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 12px;
+      font-size: 0.78rem;
+      color: var(--text-3);
+    }
+    .header-rule {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 28px auto 0;
+      max-width: 200px;
+    }
+    .header-rule::before,
+    .header-rule::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .header-rule-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: rgba(74,222,128,0.4);
+    }
+
+    /* ── Widget container ── */
+    .widget-wrap {
+      padding: 8px 0 64px;
+      animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) 0.08s both;
+    }
+    /* Target the shadow-DOM host div the widget injects */
+    [data-booking-widget] {
+      display: block;
+      width: min(90vw, 680px);
+      margin: 0 auto;
+    }
+
+    /* ── Error state ── */
+    .error-state {
+      text-align: center;
+      padding: 80px 24px;
+      max-width: 380px;
+      margin: 0 auto;
+    }
+    .error-icon  { font-size: 2.8rem; margin-bottom: 18px; }
+    .error-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.25rem; font-weight: 700;
+      letter-spacing: -0.02em; margin-bottom: 10px;
+    }
+    .error-sub   { font-size: 0.83rem; color: var(--text-2); line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <div id="root"></div>
+
+  <script>
+    (async function () {
+      const SUPABASE_URL      = 'https://uijudgnqawtvjyjuyuwo.supabase.co'
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVkZ25xYXd0dmp5anV5dXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjI1NDQsImV4cCI6MjA5MTA5ODU0NH0.MkIJL-GmeAzUsyinykQWa0-4mjAWTf-WEuZelLouDYg'
+      const root = document.getElementById('root')
+
+      const id = new URLSearchParams(window.location.search).get('id')
+
+      if (!id) {
+        root.innerHTML = `
+          <div class="error-state">
+            <div class="error-icon">&#9888;&#65039;</div>
+            <div class="error-title">Invalid booking link</div>
+            <div class="error-sub">This link is missing a business ID. Please check the URL and try again.</div>
+          </div>`
+        return
+      }
+
+      // ── Fetch business info (anon read) ──────────────────────────────────────
+      let businessName = '', bio = '', desc = '', location = ''
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/clients?id=eq.${encodeURIComponent(id)}&select=business_name,booking_page_bio,booking_page_description,booking_page_location&limit=1`,
+          { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+        )
+        const rows = await res.json()
+        if (Array.isArray(rows) && rows[0]) {
+          businessName = rows[0].business_name || ''
+          bio          = rows[0].booking_page_bio || ''
+          desc         = rows[0].booking_page_description || ''
+          location     = rows[0].booking_page_location || ''
+        }
+      } catch (e) {
+        console.warn('[MCBook] Could not load business info:', e)
+      }
+
+      if (businessName) document.title = `Book — ${businessName}`
+
+      // ── Render page ───────────────────────────────────────────────────────────
+      root.innerHTML = `
+        <div class="page-header">
+          <div class="biz-badge"><span class="biz-dot"></span> Now accepting bookings</div>
+          <div class="biz-name">${escHtml(businessName || 'Book an Appointment')}</div>
+          ${bio      ? `<div class="biz-bio">${escHtml(bio)}</div>` : ''}
+          ${location ? `<div class="biz-location">&#128205; ${escHtml(location)}</div>` : ''}
+          ${desc     ? `<div class="biz-desc">${escHtml(desc)}</div>` : ''}
+          <div class="header-rule"><span class="header-rule-dot"></span></div>
+        </div>
+        <div class="widget-wrap" id="widget-mount"></div>
+      `
+
+      // ── Inject widget ─────────────────────────────────────────────────────────
+      const s = document.createElement('script')
+      s.src   = 'https://matthiasdev.com/mcbook/widget.js'
+      s.setAttribute('data-business-id', id)
+      document.getElementById('widget-mount').appendChild(s)
+    })()
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+    }
+  </script>
+
+</body>
+</html>

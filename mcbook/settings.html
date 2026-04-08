@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — MCBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #0a0a0f;
+      --surface:     #111118;
+      --surface-2:   #14141d;
+      --border:      #1e1e2e;
+      --accent:      #4ade80;
+      --accent-dim:  rgba(74,222,128,0.75);
+      --accent-bg:   rgba(74,222,128,0.07);
+      --accent-glow: 0 0 12px rgba(74,222,128,0.15);
+      --text:        #ffffff;
+      --text-2:      #8b8b9e;
+      --text-3:      #55556a;
+      --danger:      #ef4444;
+      --success:     #4ade80;
+      --radius-sm:   8px;
+      --radius:      12px;
+      --sidebar-w:   228px;
+      --topbar-h:    60px;
+      --ease:        0.2s ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 100; overflow-y: auto;
+    }
+    .sidebar-logo { display: flex; align-items: center; gap: 9px; padding: 18px 18px 16px; border-bottom: 1px solid var(--border); text-decoration: none; }
+    .sidebar-logo-icon { width: 30px; height: 30px; background: var(--accent-bg); border: 1px solid rgba(74,222,128,0.2); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+    .sidebar-logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, #4ade80, #86efac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-section-label { padding: 18px 18px 5px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.2); }
+    .nav-link { display: flex; align-items: center; gap: 9px; padding: 9px 18px; color: var(--text-2); text-decoration: none; font-size: 0.835rem; font-weight: 500; letter-spacing: -0.01em; border-right: 2px solid transparent; transition: color var(--ease), background var(--ease), border-color var(--ease); }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .nav-link.active { color: var(--accent); background: var(--accent-bg); border-right-color: var(--accent); }
+    .nav-icon { width: 16px; text-align: center; font-size: 0.9rem; flex-shrink: 0; opacity: 0.75; }
+    .nav-link.active .nav-icon { opacity: 1; }
+    .sidebar-footer { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); }
+    .sidebar-user { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+    .sidebar-avatar { width: 30px; height: 30px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: var(--text-2); flex-shrink: 0; }
+    .sidebar-user-name { font-size: 0.8rem; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+    .sidebar-user-role { font-size: 0.7rem; color: var(--text-2); margin-top: 1px; }
+
+    /* ── Main ── */
+    .main { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: -0.02em; }
+    .topbar-date  { font-size: 0.78rem; color: var(--text-2); }
+    .content { flex: 1; padding: 24px; }
+
+    /* ── Card ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; max-width: 600px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .card-header-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; }
+    .card-title { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.01em; }
+    .card-sub   { font-size: 0.73rem; color: var(--text-2); margin-top: 2px; }
+    .card-body  { padding: 20px; }
+
+    /* ── Fields ── */
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+    .field-label { display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+    .field-input {
+      width: 100%; padding: 10px 13px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: inherit; font-size: 0.88rem;
+      outline: none; transition: border-color var(--ease), box-shadow var(--ease);
+    }
+    .field-input:hover { border-color: rgba(74,222,128,0.3); }
+    .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,222,128,0.08); }
+    .field-input::placeholder { color: var(--text-3); }
+    .field-input:disabled { opacity: 0.5; cursor: not-allowed; }
+    .field-hint { font-size: 0.71rem; color: var(--text-3); margin-top: 5px; line-height: 1.5; }
+
+    /* ── Message ── */
+    .field-msg {
+      font-size: 0.78rem; border-radius: var(--radius-sm);
+      padding: 9px 12px; margin-top: 10px; display: none;
+    }
+    .field-msg.error   { display: block; color: var(--danger);  background: rgba(239,68,68,0.07);  border: 1px solid rgba(239,68,68,0.2); }
+    .field-msg.success { display: block; color: var(--success); background: rgba(74,222,128,0.07); border: 1px solid rgba(74,222,128,0.2); }
+
+    /* ── Divider ── */
+    .card-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+    .btn-save {
+      padding: 9px 18px; background: var(--accent); color: #0a0a0f;
+      border: none; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: filter var(--ease);
+    }
+    .btn-save:hover { filter: brightness(1.1); }
+    .btn-save:disabled { opacity: 0.5; cursor: default; }
+    .btn-danger {
+      padding: 9px 18px; background: rgba(239,68,68,0.08); color: var(--danger);
+      border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: background var(--ease);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.15); }
+
+    /* ── Hamburger + overlay ── */
+    .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; flex-shrink: 0; }
+    .hamburger:hover { background: rgba(255,255,255,0.06); }
+    .hamburger span { display: block; width: 18px; height: 2px; background: var(--text-2); border-radius: 2px; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
+    .sidebar-overlay.active { display: block; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 200; }
+      .sidebar.open { transform: none; }
+      .main { margin-left: 0; }
+    }
+    @media (max-width: 480px) { .content { padding: 16px; } .card { max-width: 100%; } }
+  </style>
+</head>
+<body>
+
+  <script type="module">
+    import { requireAuth, signOut } from './js/auth.js'
+    import { supabase } from './js/supabase.js'
+
+    const session = await requireAuth()
+    if (!session) throw new Error('No session')
+
+    // ── Load profile ──────────────────────────────────────────────────────────
+    const { data: client } = await supabase
+      .from('clients')
+      .select('business_name, email')
+      .eq('id', session.user.id)
+      .single()
+
+    const currentEmail = session.user.email ?? ''
+    const bizName      = client?.business_name ?? ''
+
+    // Populate sidebar
+    document.getElementById('sidebar-avatar').textContent = (bizName || 'MB').slice(0, 2).toUpperCase()
+    document.getElementById('sidebar-name').textContent   = bizName || currentEmail
+
+    // Populate fields
+    document.getElementById('email-display').value = currentEmail
+    document.getElementById('biz-name-input').value = bizName
+
+    // ── Save business name ────────────────────────────────────────────────────
+    document.getElementById('biz-name-form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const btn  = document.getElementById('biz-name-btn')
+      const msg  = document.getElementById('biz-name-msg')
+      const name = document.getElementById('biz-name-input').value.trim()
+      msg.className = 'field-msg'
+      if (!name) { msg.textContent = 'Business name cannot be empty.'; msg.classList.add('error'); return }
+      btn.disabled = true; btn.textContent = 'Saving…'
+      const { error } = await supabase.from('clients').update({ business_name: name }).eq('id', session.user.id)
+      btn.disabled = false; btn.textContent = 'Save'
+      if (error) {
+        msg.textContent = error.message; msg.classList.add('error')
+      } else {
+        msg.textContent = '✓ Business name updated.'; msg.classList.add('success')
+        document.getElementById('sidebar-name').textContent = name
+        document.getElementById('sidebar-avatar').textContent = name.slice(0, 2).toUpperCase()
+        setTimeout(() => { msg.className = 'field-msg' }, 3000)
+      }
+    })
+
+    // ── Change email ──────────────────────────────────────────────────────────
+    document.getElementById('email-form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const btn      = document.getElementById('email-btn')
+      const msg      = document.getElementById('email-msg')
+      const newEmail = document.getElementById('new-email-input').value.trim()
+      msg.className = 'field-msg'
+      if (!newEmail) { msg.textContent = 'Please enter a new email address.'; msg.classList.add('error'); return }
+      if (newEmail === currentEmail) { msg.textContent = 'That is already your current email.'; msg.classList.add('error'); return }
+      btn.disabled = true; btn.textContent = 'Sending…'
+      const { error } = await supabase.auth.updateUser({ email: newEmail })
+      btn.disabled = false; btn.textContent = 'Send confirmation'
+      if (error) {
+        msg.textContent = error.message; msg.classList.add('error')
+      } else {
+        msg.textContent = `✓ Confirmation sent to ${newEmail}. Click the link in the email to confirm the change.`
+        msg.classList.add('success')
+        document.getElementById('new-email-input').value = ''
+      }
+    })
+
+    // ── Change password ───────────────────────────────────────────────────────
+    document.getElementById('password-form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const btn      = document.getElementById('password-btn')
+      const msg      = document.getElementById('password-msg')
+      const newPw    = document.getElementById('new-password-input').value
+      const confirm  = document.getElementById('confirm-password-input').value
+      msg.className = 'field-msg'
+      if (newPw.length < 8) { msg.textContent = 'Password must be at least 8 characters.'; msg.classList.add('error'); return }
+      if (newPw !== confirm) { msg.textContent = 'Passwords do not match.'; msg.classList.add('error'); return }
+      btn.disabled = true; btn.textContent = 'Saving…'
+      const { error } = await supabase.auth.updateUser({ password: newPw })
+      btn.disabled = false; btn.textContent = 'Change password'
+      if (error) {
+        msg.textContent = error.message; msg.classList.add('error')
+      } else {
+        msg.textContent = '✓ Password changed successfully.'
+        msg.classList.add('success')
+        document.getElementById('new-password-input').value = ''
+        document.getElementById('confirm-password-input').value = ''
+        setTimeout(() => { msg.className = 'field-msg' }, 4000)
+      }
+    })
+
+    // ── Sign out ──────────────────────────────────────────────────────────────
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="signout"]')) { e.preventDefault(); signOut() }
+    })
+
+    // ── Topbar date ───────────────────────────────────────────────────────────
+    document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-AU', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    })
+  </script>
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <a href="dashboard.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">&#128197;</div>
+      <span class="sidebar-logo-text">MCBook</span>
+    </a>
+
+    <span class="nav-section-label">Main</span>
+    <a href="dashboard.html"  class="nav-link"><span class="nav-icon">&#9707;</span> Dashboard</a>
+    <a href="bookings.html"   class="nav-link"><span class="nav-icon">&#128203;</span> Bookings</a>
+    <a href="customers.html"  class="nav-link"><span class="nav-icon">&#128100;</span> Customers</a>
+
+    <span class="nav-section-label">Setup</span>
+    <a href="services.html"          class="nav-link"><span class="nav-icon">&#10024;</span> Services</a>
+    <a href="availability.html"      class="nav-link"><span class="nav-icon">&#128197;</span> Availability</a>
+    <a href="stripe-onboarding.html" class="nav-link"><span class="nav-icon">&#128176;</span> Payouts</a>
+    <a href="embed.html"             class="nav-link"><span class="nav-icon">&#128279;</span> Share</a>
+
+    <span class="nav-section-label">Account</span>
+    <a href="settings.html" class="nav-link active"><span class="nav-icon">&#9881;&#65039;</span> Settings</a>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar">MB</div>
+        <div>
+          <div class="sidebar-user-name" id="sidebar-name">Loading…</div>
+          <div class="sidebar-user-role">Business Owner</div>
+        </div>
+      </div>
+      <a href="#" class="nav-link" data-action="signout"><span class="nav-icon">&#10148;</span> Sign Out</a>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Open menu"><span></span><span></span><span></span></button>
+      <span class="topbar-title">Settings</span>
+      <div class="topbar-actions">
+        <span class="topbar-date" id="topbar-date"></span>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- Business profile -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">&#127970;</div>
+          <div>
+            <div class="card-title">Business Profile</div>
+            <div class="card-sub">Your business name shown on the dashboard and booking page.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <form id="biz-name-form">
+            <div class="field">
+              <label class="field-label" for="biz-name-input">Business Name</label>
+              <input type="text" class="field-input" id="biz-name-input" placeholder="e.g. Jane's Hair Studio" autocomplete="organization" required>
+            </div>
+            <div class="btn-row">
+              <button type="submit" class="btn-save" id="biz-name-btn">Save</button>
+            </div>
+            <div class="field-msg" id="biz-name-msg"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Email address -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">&#128231;</div>
+          <div>
+            <div class="card-title">Email Address</div>
+            <div class="card-sub">Change the email you use to sign in to MCBook.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="field">
+            <label class="field-label">Current Email</label>
+            <input type="email" class="field-input" id="email-display" disabled>
+          </div>
+          <hr class="card-divider">
+          <form id="email-form">
+            <div class="field">
+              <label class="field-label" for="new-email-input">New Email Address</label>
+              <input type="email" class="field-input" id="new-email-input" placeholder="new@yourbusiness.com" autocomplete="email" required>
+              <div class="field-hint">A confirmation link will be sent to your new email. Your email will not change until you click the link.</div>
+            </div>
+            <div class="btn-row">
+              <button type="submit" class="btn-save" id="email-btn">Send confirmation</button>
+            </div>
+            <div class="field-msg" id="email-msg"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">&#128274;</div>
+          <div>
+            <div class="card-title">Password</div>
+            <div class="card-sub">Change the password you use to sign in.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <form id="password-form">
+            <div class="field">
+              <label class="field-label" for="new-password-input">New Password</label>
+              <input type="password" class="field-input" id="new-password-input" placeholder="At least 8 characters" autocomplete="new-password" required minlength="8">
+            </div>
+            <div class="field">
+              <label class="field-label" for="confirm-password-input">Confirm New Password</label>
+              <input type="password" class="field-input" id="confirm-password-input" placeholder="Repeat your new password" autocomplete="new-password" required>
+            </div>
+            <div class="btn-row">
+              <button type="submit" class="btn-save" id="password-btn">Change password</button>
+            </div>
+            <div class="field-msg" id="password-msg"></div>
+          </form>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    var _hbg = document.getElementById('hamburger'), _sb = document.querySelector('.sidebar'), _ov = document.getElementById('sidebar-overlay')
+    _hbg && _hbg.addEventListener('click', function() { _sb.classList.toggle('open'); _ov.classList.toggle('active') })
+    _ov  && _ov.addEventListener('click',  function() { _sb.classList.remove('open'); _ov.classList.remove('active') })
+  </script>
+</body>
+</html>

@@ -1,0 +1,887 @@
+================================================================================
+  MCBook — Supabase Implementation Roadmap
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PHASE 1 — DATABASE SCHEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  IN SUPABASE DASHBOARD
+  ─────────────────────
+  1. SQL Editor → New Query
+  2. Paste and run the SQL below
+  3. Confirm all 8 tables appear in Table Editor:
+     clients, services, availability_rules, booking_settings,
+     blocked_dates, customers, bookings, payments
+
+  ┌─ PASTE THIS SQL ──────────────────────────────────────────────────────────┐
+
+-- Enable UUID generation
+create extension if not exists "pgcrypto";
+
+-- clients: one row per business owner. id = auth.users.id
+create table if not exists public.clients (
+  id              uuid primary key references auth.users(id) on delete cascade,
+  business_name   text not null default '',
+  email           text not null default '',
+  created_at      timestamptz not null default now()
+);
+
+-- services: what the business offers (Haircut, Color Treatment, etc.)
+create table if not exists public.services (
+  id              uuid primary key default gen_random_uuid(),
+  client_id       uuid not null references public.clients(id) on delete cascade,
+  name            text not null,
+  description     text,
+  duration_mins   int  not null check (duration_mins > 0),
+  price           numeric(10,2) not null check (price >= 0),
+  noshow_fee      numeric(10,2) not null default 0 check (noshow_fee >= 0),
+  active          boolean not null default true,
+  created_at      timestamptz not null default now()
+);
+create index if not exists services_client_id_idx on public.services(client_id);
+create index if not exists services_active_idx    on public.services(client_id, active);
+
+-- availability_rules: one row per day-of-week per client (0=Sun … 6=Sat)
+create table if not exists public.availability_rules (
+  id              uuid primary key default gen_random_uuid(),
+  client_id       uuid not null references public.clients(id) on delete cascade,
+  day_of_week     int  not null check (day_of_week between 0 and 6),
+  enabled         boolean not null default true,
+  start_time      time not null default '09:00',
+  end_time        time not null default '17:00',
+  unique (client_id, day_of_week)
+);
+create index if not exists avail_client_idx on public.availability_rules(client_id);
+
+-- booking_settings: slot duration, advance window, min notice — one row per client
+create table if not exists public.booking_settings (
+  id                    uuid primary key default gen_random_uuid(),
+  client_id             uuid not null references public.clients(id) on delete cascade,
+  slot_duration_mins    int  not null default 30,
+  advance_window_weeks  int  not null default 4,
+  min_notice_hours      int  not null default 2,
+  created_at            timestamptz not null default now(),
+  unique (client_id)
+);
+
+-- blocked_dates: holidays, training days — no bookings accepted
+create table if not exists public.blocked_dates (
+  id          uuid primary key default gen_random_uuid(),
+  client_id   uuid not null references public.clients(id) on delete cascade,
+  date        date not null,
+  label       text,
+  created_at  timestamptz not null default now()
+);
+create index if not exists blocked_dates_client_date_idx
+  on public.blocked_dates(client_id, date);
+
+-- customers: end-customers who book via the widget
+create table if not exists public.customers (
+  id                  uuid primary key default gen_random_uuid(),
+  client_id           uuid not null references public.clients(id) on delete cascade,
+  name                text not null,
+  email               text not null,
+  phone               text,
+  stripe_customer_id  text,
+  created_at          timestamptz not null default now()
+);
+create index if not exists customers_client_id_idx   on public.customers(client_id);
+create index if not exists customers_email_idx       on public.customers(client_id, email);
+create index if not exists customers_created_at_idx  on public.customers(client_id, created_at);
+
+-- bookings: core record. status: scheduled | completed | noshow | cancelled
+create table if not exists public.bookings (
+  id                  uuid primary key default gen_random_uuid(),
+  client_id           uuid not null references public.clients(id) on delete cascade,
+  customer_id         uuid not null references public.customers(id),
+  service_id          uuid not null references public.services(id),
+  date                date not null,
+  time                time not null,
+  status              text not null default 'scheduled'
+                        check (status in ('scheduled','completed','noshow','cancelled')),
+  payment_method_id   text,
+  noshow_charged      boolean not null default false,
+  created_at          timestamptz not null default now()
+);
+create index if not exists bookings_client_id_idx   on public.bookings(client_id);
+create index if not exists bookings_date_idx        on public.bookings(client_id, date);
+create index if not exists bookings_status_idx      on public.bookings(client_id, status);
+create index if not exists bookings_customer_id_idx on public.bookings(customer_id);
+create index if not exists bookings_created_at_idx  on public.bookings(client_id, created_at);
+
+-- payments: audit log of Stripe no-show charges
+create table if not exists public.payments (
+  id                uuid primary key default gen_random_uuid(),
+  booking_id        uuid not null references public.bookings(id),
+  client_id         uuid not null references public.clients(id),
+  stripe_charge_id  text,
+  amount            numeric(10,2) not null,
+  type              text not null default 'noshow_fee',
+  created_at        timestamptz not null default now()
+);
+create index if not exists payments_client_id_idx  on public.payments(client_id);
+create index if not exists payments_booking_id_idx on public.payments(booking_id);
+
+  └───────────────────────────────────────────────────────────────────────────┘
+
+  PASTE INTO CLAUDE CODE
+  ──────────────────────
+  Nothing to code in this phase.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PHASE 2 — ROW-LEVEL SECURITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  IN SUPABASE DASHBOARD
+  ─────────────────────
+  1. Table Editor → click each table → toggle "RLS disabled" → confirm
+     Do this for all 8 tables:
+       clients, services, availability_rules, booking_settings,
+       blocked_dates, customers, bookings, payments
+  2. Do NOT add any policies here — they are written by Claude Code below
+
+  ┌─ PASTE INTO CLAUDE CODE ──────────────────────────────────────────────────┐
+
+Create the file supabase/rls_policies.sql containing every RLS policy for
+the MCBook app. Use the exact table and column names below.
+
+Schema:
+  clients(id, business_name, email, created_at)
+    — id is auth.users.id
+  services(id, client_id, name, description, duration_mins, price, noshow_fee, active, created_at)
+  availability_rules(id, client_id, day_of_week, enabled, start_time, end_time)
+  booking_settings(id, client_id, slot_duration_mins, advance_window_weeks, min_notice_hours, created_at)
+  blocked_dates(id, client_id, date, label, created_at)
+  customers(id, client_id, name, email, phone, stripe_customer_id, created_at)
+  bookings(id, client_id, customer_id, service_id, date, time, status, payment_method_id, noshow_charged, created_at)
+  payments(id, booking_id, client_id, stripe_charge_id, amount, type, created_at)
+
+Access rules:
+
+  clients       — all operations: owner only (auth.uid() = id)
+
+  services      — SELECT: public anon (widget reads without auth)
+                — INSERT/UPDATE/DELETE: owner only (auth.uid() = client_id)
+
+  availability_rules — SELECT: public anon
+                     — INSERT/UPDATE/DELETE: owner only
+
+  booking_settings   — SELECT: public anon
+                     — INSERT/UPDATE/DELETE: owner only
+
+  blocked_dates      — SELECT: public anon
+                     — INSERT/DELETE: owner only
+
+  customers     — SELECT/UPDATE/DELETE: owner only (auth.uid() = client_id)
+                — INSERT: allow anon (widget creates customers without auth)
+
+  bookings      — SELECT/UPDATE/DELETE: owner only
+                — INSERT: allow anon (widget submits bookings without auth)
+
+  payments      — SELECT: owner only
+                — INSERT: service role only (Edge Functions use service role)
+                — UPDATE/DELETE: deny all
+
+Write CREATE POLICY statements for every table and every operation.
+Name policies as: "<table> <operation> <who>"  e.g. "services select public"
+Do not include DROP POLICY statements.
+
+  └───────────────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PHASE 3 — AUTHENTICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  IN SUPABASE DASHBOARD
+  ─────────────────────
+  1. Authentication → Providers → confirm Email is enabled
+  2. Authentication → URL Configuration:
+       Site URL:      https://yourdomain.com  (or http://localhost:5500 for local)
+       Redirect URLs: <site-url>/dashboard.html
+                      <site-url>/login.html
+  3. Project Settings → API → copy "Project URL" and "anon public" key
+     (you'll paste these into js/supabase.js in the next step)
+
+  ┌─ PASTE INTO CLAUDE CODE ──────────────────────────────────────────────────┐
+
+Implement shared authentication for the MCBook dashboard. Do not change any
+HTML structure, layout, or styles. Only create JS files and add <script> tags.
+
+All HTML files are at project root. JS files go in js/.
+
+────────────────────────────────────────────────────────────────────────────────
+CREATE: js/supabase.js
+────────────────────────────────────────────────────────────────────────────────
+Import the Supabase JS client from:
+  https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm
+
+Create and export a single client instance:
+  const SUPABASE_URL     = 'YOUR_PROJECT_URL'   // fill in
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'     // fill in
+  export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+────────────────────────────────────────────────────────────────────────────────
+CREATE: js/auth.js
+────────────────────────────────────────────────────────────────────────────────
+Import { supabase } from './supabase.js'. Export these four functions:
+
+  signIn(email, password)
+    → supabase.auth.signInWithPassword({ email, password })
+    → returns { data, error }
+
+  signOut()
+    → supabase.auth.signOut()
+    → redirect to login.html
+
+  getSession()
+    → supabase.auth.getSession()
+    → returns session or null
+
+  requireAuth()
+    → calls getSession(); if null, redirects to login.html and returns false
+    → otherwise returns the session
+
+────────────────────────────────────────────────────────────────────────────────
+UPDATE: login.html
+────────────────────────────────────────────────────────────────────────────────
+Add <script type="module"> before </body>:
+  — Import { signIn } from './js/auth.js'
+  — Intercept form submit (preventDefault)
+  — Read #email and #password values
+  — Call signIn(email, password)
+  — On error: show message in a <p id="login-error"> element (add it inside
+    .login-body above the submit button, display:none by default,
+    style="color:var(--danger);font-size:0.8rem;margin-bottom:10px")
+  — On success: redirect to dashboard.html
+
+────────────────────────────────────────────────────────────────────────────────
+UPDATE: dashboard.html, bookings.html, customers.html, services.html, availability.html
+────────────────────────────────────────────────────────────────────────────────
+Add <script type="module"> as the first script inside <body>:
+  — Import { requireAuth, signOut } from './js/auth.js'
+  — Call requireAuth() immediately (redirects to login.html if no session)
+  — Add data-action="signout" to the <a href="#" class="nav-link"> inside
+    .sidebar-footer, then wire its click to call signOut() and preventDefault
+
+  └───────────────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PHASE 4 — DATA LOADING PER PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  IN SUPABASE DASHBOARD
+  ─────────────────────
+  Nothing to do.
+
+  ┌─ PASTE INTO CLAUDE CODE ──────────────────────────────────────────────────┐
+
+Create five JS modules in js/pages/ that replace all static mock data with live
+Supabase queries. Do not change any HTML structure, layout, or styles.
+Import paths must be relative (e.g. import { supabase } from '../supabase.js').
+client_id always = session.user.id from getSession().
+
+Column names to use exactly:
+  bookings:          id, client_id, customer_id, service_id, date, time, status,
+                     payment_method_id, noshow_charged, created_at
+  customers:         id, client_id, name, email, phone, stripe_customer_id, created_at
+  services:          id, client_id, name, description, duration_mins, price,
+                     noshow_fee, active, created_at
+  availability_rules: id, client_id, day_of_week, enabled, start_time, end_time
+  blocked_dates:     id, client_id, date, label, created_at
+  booking_settings:  id, client_id, slot_duration_mins, advance_window_weeks,
+                     min_notice_hours, created_at
+
+────────────────────────────────────────────────────────────────────────────────
+CREATE: js/pages/dashboard.js
+Add to dashboard.html: <script type="module" src="./js/pages/dashboard.js"></script>
+────────────────────────────────────────────────────────────────────────────────
+
+On DOMContentLoaded, get session (client_id = session.user.id) then run:
+
+1. STAT CARDS
+
+   Today's Bookings (.stat-card label "Today's Bookings"):
+     count(*) from bookings where client_id=? and date=CURRENT_DATE
+     Also count yesterday's for delta. Show "+N from yesterday" in .stat-delta
+     with class "up" or "down".
+
+   This Week (.stat-card label "This Week"):
+     count(*) where date >= start of current week
+
+   Revenue MTD (.stat-card label "Revenue (MTD)"):
+     JOIN bookings + services on service_id, sum services.price
+     where date >= start of month and status != 'cancelled'
+     Format as "$X,XXX"
+
+   No-shows MTD (.stat-card label "No-shows (MTD)"):
+     count bookings where status='noshow' and date >= start of month
+     LEFT JOIN payments, sum payments.amount
+     Show count in .stat-value, "$X collected in fees" in .stat-delta
+
+2. TODAY'S SCHEDULE (.panel-title "Today's Schedule")
+
+   Query: bookings JOIN customers(name) JOIN services(name, duration_mins)
+   WHERE date = CURRENT_DATE ORDER BY time ASC
+
+   Clear existing .booking-list-item elements. For each booking render:
+     <div class="booking-list-item" data-booking-id="{id}">
+       <span class="booking-time">{time as h:mm AM/PM}</span>
+       <div class="booking-avatar">{customer initials}</div>
+       <div class="booking-info">
+         <div class="booking-name">{customer name}</div>
+         <div class="booking-service">{service name} · {duration_mins} min</div>
+       </div>
+       <span class="status-pill {status}">{status capitalised}</span>
+     </div>
+   Update .panel-badge to "{count} bookings".
+
+3. UPCOMING (.panel-title "Upcoming")
+
+   Query: bookings JOIN customers JOIN services
+   WHERE date > CURRENT_DATE ORDER BY date ASC, time ASC LIMIT 5
+
+   Clear existing .upcoming-item elements. For each render:
+     <div class="upcoming-item">
+       <div class="upcoming-date-box">
+         <span class="day">{day number}</span>
+         <span class="mon">{3-letter month}</span>
+       </div>
+       <div class="upcoming-info">
+         <div class="upcoming-name">{customer name}</div>
+         <div class="upcoming-meta">{service name} · {time formatted}</div>
+       </div>
+       <span class="status-pill {status}">{status}</span>
+     </div>
+
+4. REVENUE CHART (.panel-title "Revenue — Last 7 Days")
+
+   Query: bookings JOIN services, last 7 days, group by date,
+   sum services.price where status != 'cancelled'
+   Find max revenue to normalise bar widths to 100%.
+
+   Clear existing .chart-bar-row elements. For each of the 7 days render:
+     <div class="chart-bar-row">
+       <span class="chart-label">{Mon/Tue/etc}</span>
+       <div class="chart-bar-wrap">
+         <div class="chart-bar" style="width:{pct}%"></div>
+       </div>
+       <span class="chart-val">{revenue > 0 ? "$"+val : "—"}</span>
+     </div>
+
+────────────────────────────────────────────────────────────────────────────────
+CREATE: js/pages/bookings.js
+Add to bookings.html: <script type="module" src="./js/pages/bookings.js"></script>
+────────────────────────────────────────────────────────────────────────────────
+
+State: let currentPage = 1, statusFilter = '', dateFilter = ''
+const PAGE_SIZE = 10
+
+On DOMContentLoaded call loadBookings().
+
+loadBookings():
+  Query: supabase.from('bookings')
+    .select('*, customers(name, email), services(name)')
+    .eq('client_id', client_id)
+    .order('date', { ascending: false })
+    .order('time', { ascending: false })
+
+  Before .range(), apply filters:
+    statusFilter set  → .eq('status', statusFilter)
+    dateFilter=Today  → .eq('date', todayISO)
+    dateFilter=Week   → .gte('date', weekStartISO)
+    dateFilter=Month  → .gte('date', monthStartISO)
+
+  Also run a count query (same filters, no range) for pagination total.
+
+  Clear <tbody>. For each row render:
+    <tr data-booking-id="{id}">
+      <td>
+        <div class="customer-cell">
+          <div class="cust-avatar">{initials}</div>
+          <div>
+            <div class="cust-name">{customers.name}</div>
+            <div class="cust-email">{customers.email}</div>
+          </div>
+        </div>
+      </td>
+      <td>{services.name}</td>
+      <td>{date as "Apr 7, 2025"}</td>
+      <td>{time as "9:00 AM"}</td>
+      <td><span class="status-pill {status}">{status}</span></td>
+      <td>
+        <div class="row-actions">
+          <button class="btn-noshow" {status!='scheduled' ? 'disabled' : ''}>Mark No-show</button>
+          <button class="btn-view">View</button>
+        </div>
+      </td>
+    </tr>
+
+  Update .table-count text and pagination with real totals.
+
+Wire events:
+  .filter-input       → 300ms debounce, filter visible rows client-side
+  .filter-select[0]   → status filter, reset page, call loadBookings()
+  .filter-select[1]   → date filter, reset page, call loadBookings()
+  .page-btn           → set currentPage, call loadBookings()
+  .btn-noshow (delegated on tbody) → call markNoshow(bookingId)
+    For now: UPDATE bookings SET status='noshow' WHERE id=?, reload.
+    (Wired to Edge Function in Phase 6.)
+
+────────────────────────────────────────────────────────────────────────────────
+CREATE: js/pages/customers.js
+Add to customers.html: <script type="module" src="./js/pages/customers.js"></script>
+────────────────────────────────────────────────────────────────────────────────
+
+On DOMContentLoaded:
+
+STAT CHIPS (.stat-strip):
+  1st chip (.stat-chip-val): count(*) from customers where client_id=?
+  2nd chip: count where created_at >= start of month
+  3rd chip: count of customers with 3+ bookings (subquery)
+
+CUSTOMERS TABLE:
+  SELECT c.*,
+    count(b.id) filter (where b.status != 'cancelled') as booking_count,
+    count(b.id) filter (where b.status = 'noshow') as noshow_count
+  FROM customers c LEFT JOIN bookings b ON b.customer_id = c.id
+  WHERE c.client_id = ?
+  GROUP BY c.id ORDER BY c.created_at DESC LIMIT 10
+
+  Clear <tbody>. For each customer render:
+    <tr>
+      <td>
+        <div class="customer-cell">
+          <div class="cust-avatar c{index % 8 + 1}">{initials}</div>
+          <div>
+            <div class="cust-name">{name}</div>
+            <div class="cust-since">Customer since {Month YYYY}</div>
+          </div>
+        </div>
+      </td>
+      <td>{email}</td>
+      <td>{phone ?? '—'}</td>
+      <td><span class="booking-count">{booking_count}</span></td>
+      <td><span class="noshow-count {noshow_count===0 ? 'none' : ''}">{noshow_count}</span></td>
+      <td><button class="btn-view">View</button></td>
+    </tr>
+
+  Update .table-count with total.
+
+SEARCH: wire .filter-input 'input' → filter visible tbody rows case-insensitively
+  against name, email, phone text content.
+
+────────────────────────────────────────────────────────────────────────────────
+CREATE: js/pages/services.js
+Add to services.html: <script type="module" src="./js/pages/services.js"></script>
+────────────────────────────────────────────────────────────────────────────────
+
+On DOMContentLoaded call loadServices().
+
+loadServices():
+  SELECT * FROM services WHERE client_id=? ORDER BY created_at ASC
+  Clear .services-list. For each service render (matching existing card structure):
+    <div class="service-card" data-service-id="{id}">
+      <div class="service-card-main">
+        <div class="service-dot {dot-blue|dot-purple|dot-amber|dot-green by index%4}">✂</div>
+        <div class="service-info">
+          <div class="service-name">{name}</div>
+          <div class="service-tags">
+            <span class="service-tag">{duration_mins} minutes</span>
+            <span class="service-tag price">${price}</span>
+            <span class="service-tag nosho">No-show: ${noshow_fee}</span>
+          </div>
+        </div>
+        <div class="service-actions">
+          <div class="service-active-toggle">
+            <label class="toggle">
+              <input type="checkbox" {active?'checked':''} class="toggle-active">
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+            {active ? 'Active' : 'Inactive'}
+          </div>
+          <div class="service-edit-btns">
+            <button class="btn-edit">Edit</button>
+            <button class="btn-delete">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+Wire events (delegate on .services-list):
+  .toggle-active change  → UPDATE services SET active=? WHERE id=?
+                           Update label text immediately.
+  .btn-delete click      → window.confirm() → DELETE WHERE id=? → reload
+  .btn-edit click        → populate add-service form fields with current values,
+                           scroll to form, add hidden #edit-service-id input.
+                           On Save with that input set: UPDATE instead of INSERT.
+
+Wire .add-service-panel Save button:
+  Read: name, description, duration (parse text→mins: 15min=15, 30min=30,
+  45min=45, 1hr=60, 1.5hr=90, 2hr=120), price, noshow_fee
+  If #edit-service-id has value → UPDATE services SET ... WHERE id=?
+  Else → INSERT INTO services (client_id, name, description, duration_mins,
+         price, noshow_fee, active) VALUES (?, ?, ?, ?, ?, ?, true)
+  On success: reload list, clear form.
+
+────────────────────────────────────────────────────────────────────────────────
+CREATE: js/pages/availability.js
+Add to availability.html: <script type="module" src="./js/pages/availability.js"></script>
+────────────────────────────────────────────────────────────────────────────────
+
+On DOMContentLoaded run Promise.all([loadWeeklySchedule(), loadBlockedDates(),
+loadBookingSettings()]).
+
+loadWeeklySchedule():
+  SELECT * FROM availability_rules WHERE client_id=? ORDER BY day_of_week
+  Map: .week-row index 0=Mon(dow 1), 1=Tue(2), 2=Wed(3), 3=Thu(4),
+       4=Fri(5), 5=Sat(6), 6=Sun(0)
+  For each row: set toggle checked=rule.enabled, set time selects to
+  rule.start_time / rule.end_time. If not enabled: hide .time-range, show .day-closed.
+
+  "Save Changes" button: read all rows → UPSERT availability_rules
+  (client_id, day_of_week, enabled, start_time, end_time)
+  ON CONFLICT (client_id, day_of_week) DO UPDATE
+  Store times as "HH:MM" 24h format.
+
+loadBlockedDates():
+  SELECT * FROM blocked_dates WHERE client_id=? ORDER BY date ASC
+  Clear .blocked-list. For each render:
+    <div class="blocked-item" data-blocked-id="{id}">
+      <div class="blocked-item-left">
+        <span class="blocked-icon">🚫</span>
+        <div>
+          <div class="blocked-label">{label ?? 'Blocked'}</div>
+          <div class="blocked-note">{date as "21 Apr 2025 (Mon)"}</div>
+        </div>
+      </div>
+      <button class="btn-remove" title="Remove">×</button>
+    </div>
+  .btn-remove (delegate on .blocked-list) → DELETE WHERE id=? → reload
+  .btn-add-block → INSERT INTO blocked_dates (client_id, date, label) → reload
+
+loadBookingSettings():
+  SELECT * FROM booking_settings WHERE client_id=? LIMIT 1
+  Set the three selects in "Booking Settings" panel:
+    slot_duration_mins   → "15 minutes" | "30 minutes" | "60 minutes"
+    advance_window_weeks → "2 weeks" | "4 weeks" | "8 weeks" | "12 weeks"
+    min_notice_hours     → "1 hour" | "2 hours" | "24 hours" | "48 hours"
+
+  "Save" button → UPSERT booking_settings (client_id, slot_duration_mins,
+  advance_window_weeks, min_notice_hours) ON CONFLICT (client_id) DO UPDATE
+
+  └───────────────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PHASE 5 — WIDGET LIVE DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  IN SUPABASE DASHBOARD
+  ─────────────────────
+  Nothing to do. Anon reads on services, availability_rules, booking_settings,
+  and blocked_dates are already allowed by Phase 2 RLS. Anon inserts on
+  customers and bookings are also allowed.
+
+  ┌─ PASTE INTO CLAUDE CODE ──────────────────────────────────────────────────┐
+
+Update widget.js to replace MOCK_SERVICES and MOCK_TIMES with live Supabase
+queries. Do not change widget HTML structure, step logic, CSS, Shadow DOM
+setup, or event binding outside the sections listed below.
+Do not import from js/supabase.js — widget.js is self-contained.
+The business owner's UUID is already stored in this.businessId (from
+the data-business-id attribute on the <script> tag).
+
+────────────────────────────────────────────────────────────────────────────────
+CHANGE 1 — Add Supabase client
+────────────────────────────────────────────────────────────────────────────────
+After the MOCK_SERVICES/MOCK_TIMES constants, add:
+
+  const SUPABASE_URL      = 'YOUR_PROJECT_URL'   // fill in
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'      // fill in
+  let sb = null
+  const sbReady = (async () => {
+    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm')
+    sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  })()
+
+────────────────────────────────────────────────────────────────────────────────
+CHANGE 2 — Replace MOCK_SERVICES in _step1()
+────────────────────────────────────────────────────────────────────────────────
+Make _step1() async. If this._services is not populated, await sbReady then:
+  const { data } = await sb.from('services')
+    .select('id, name, duration_mins, price, noshow_fee')
+    .eq('client_id', this.businessId)
+    .eq('active', true)
+    .order('created_at', { ascending: true })
+  this._services = data
+
+Show "Loading services…" while awaiting. Map each service using:
+  id, name, duration_mins (format as "X min" or "X hr"), price, noshow_fee
+The state.service object stored on click must be the full object
+{ id, name, duration_mins, price, noshow_fee }.
+
+────────────────────────────────────────────────────────────────────────────────
+CHANGE 3 — Replace MOCK_TIMES in _step3()
+────────────────────────────────────────────────────────────────────────────────
+Add async function getAvailableSlots(businessId, dateObj):
+
+  a. Get availability rule for this day:
+       SELECT * FROM availability_rules WHERE client_id=businessId
+       AND day_of_week=dateObj.getDay() AND enabled=true LIMIT 1
+       → if none found, return []
+
+  b. Get booking settings:
+       SELECT slot_duration_mins, min_notice_hours FROM booking_settings
+       WHERE client_id=businessId LIMIT 1
+       → defaults: slot_duration_mins=30, min_notice_hours=2
+
+  c. Get booked times for that date:
+       SELECT time FROM bookings WHERE client_id=businessId
+       AND date=dateISO AND status != 'cancelled'
+       → build a Set of "HH:MM" strings
+
+  d. Check if date is blocked:
+       SELECT id FROM blocked_dates WHERE client_id=businessId
+       AND date=dateISO LIMIT 1
+       → if found, return []
+
+  e. Generate slots: loop start_time to end_time in slot_duration_mins steps.
+     Skip if within min_notice_hours of now.
+     Skip if time string is in booked times Set.
+     Format as "9:00 AM", "9:30 AM", etc. Return array.
+
+Make _step3() async. Replace MOCK_TIMES.map(...) with:
+  const slots = await getAvailableSlots(this.businessId, this.state.date)
+If empty: show "No available times for this date. Please choose another."
+
+────────────────────────────────────────────────────────────────────────────────
+CHANGE 4 — Save booking to Supabase on step 5 confirm
+────────────────────────────────────────────────────────────────────────────────
+In _next() when step === 5, before advancing to step 6:
+
+  a. Upsert customer:
+       SELECT id FROM customers WHERE client_id=businessId AND email=contact.email
+       If not found: INSERT INTO customers (client_id, name, email, phone)
+       Use existing or new id as customerId.
+
+  b. INSERT INTO bookings (client_id, customer_id, service_id, date, time,
+     status, payment_method_id)
+     VALUES (businessId, customerId, service.id, dateISO, timeHHMM,
+             'scheduled', null)
+     (payment_method_id filled in Phase 6)
+
+  c. On success: this.state.ref = 'BK-' + booking.id.slice(0,6).toUpperCase()
+     Advance to step 6.
+  d. On error: show in .bw-error, do not advance.
+  Show "Processing…" on the button and disable it during the operation.
+
+  └───────────────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PHASE 6 — STRIPE INTEGRATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  IN SUPABASE DASHBOARD
+  ─────────────────────
+  1. Edge Functions → Secrets → add:
+       STRIPE_SECRET_KEY      = sk_live_...  (or sk_test_... for testing)
+       STRIPE_WEBHOOK_SECRET  = whsec_...
+
+  2. After deploying the functions (done in code step), note their URLs:
+       https://<project-ref>.supabase.co/functions/v1/create-setup-intent
+       https://<project-ref>.supabase.co/functions/v1/charge-noshow
+     You will paste these into widget.js and bookings.js.
+
+  3. Optional: Stripe Dashboard → Webhooks → add the charge-noshow URL
+     for event payment_intent.succeeded
+
+  ┌─ PASTE INTO CLAUDE CODE ──────────────────────────────────────────────────┐
+
+Implement Stripe integration. Do not change any HTML structure or styles.
+
+────────────────────────────────────────────────────────────────────────────────
+CREATE: supabase/functions/create-setup-intent/index.ts
+────────────────────────────────────────────────────────────────────────────────
+Deno/TypeScript Edge Function. Import Stripe from 'https://esm.sh/stripe@13?target=deno'.
+
+Accepts POST: { bookingData: { customerId, serviceId, clientId,
+                               customerEmail, customerName } }
+
+Logic:
+  1. Create Supabase service-role client using Deno.env.get('SUPABASE_URL')
+     and Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+  2. Fetch customers row by id=customerId, check stripe_customer_id column
+
+  3. If stripe_customer_id is null:
+       stripe.customers.create({ email: customerEmail, name: customerName,
+         metadata: { mcbook_customer_id: customerId } })
+       UPDATE customers SET stripe_customer_id=newId WHERE id=customerId
+
+  4. stripe.setupIntents.create({
+       customer: stripeCustomerId,
+       payment_method_types: ['card'],
+       metadata: { mcbook_client_id: clientId }
+     })
+
+  5. Return: { clientSecret: setupIntent.client_secret, stripeCustomerId }
+
+Include CORS headers (Access-Control-Allow-Origin: *). Handle OPTIONS preflight.
+
+────────────────────────────────────────────────────────────────────────────────
+CREATE: supabase/functions/charge-noshow/index.ts
+────────────────────────────────────────────────────────────────────────────────
+Accepts POST: { bookingId }
+
+Logic:
+  1. Extract Authorization header. Create user-scoped Supabase client with it.
+     Call auth.getUser() — return 401 if no user.
+
+  2. Using service-role client, fetch:
+       SELECT b.*, s.noshow_fee FROM bookings b
+       JOIN services s ON b.service_id=s.id
+       WHERE b.id=bookingId AND b.client_id=callerId
+     Return 403 if not found. Return 400 if status != 'scheduled'.
+
+  3. Fetch customers.stripe_customer_id WHERE id=booking.customer_id
+     Return 400 if missing.
+
+  4. Use booking.payment_method_id if set, otherwise list customer's
+     Stripe payment methods and use the first card. Return 400 if none.
+
+  5. stripe.paymentIntents.create({
+       amount: Math.round(noshow_fee * 100),
+       currency: 'aud',   // change to your currency
+       customer: stripeCustomerId,
+       payment_method: paymentMethodId,
+       confirm: true, off_session: true,
+       metadata: { booking_id: bookingId, type: 'noshow_fee' }
+     })
+
+  6. On success:
+       UPDATE bookings SET status='noshow', noshow_charged=true WHERE id=bookingId
+       INSERT INTO payments (booking_id, client_id, stripe_charge_id, amount, type)
+       VALUES (bookingId, callerId, paymentIntent.id, noshow_fee, 'noshow_fee')
+     Return: { success: true, chargeId: paymentIntent.id }
+     On Stripe error: return { success: false, error: err.message } status 400.
+
+Include CORS headers. Handle OPTIONS preflight.
+
+────────────────────────────────────────────────────────────────────────────────
+UPDATE: widget.js — mount real Stripe Elements on step 5
+────────────────────────────────────────────────────────────────────────────────
+Add near the top of the IIFE (after SUPABASE constants):
+  const STRIPE_PUBLISHABLE_KEY   = 'pk_live_51TIM7W3KdzLQ6RvXRpuNTwZtQjLGq9s18uWusHKHo3aaoL2KmYccr2so1Zy0o1IkuzG0pi1WEzh82MiQPtoMrC6W00iOR1stqs'  // fill in
+  const CREATE_SETUP_INTENT_URL  = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/create-setup-intent'
+
+When _step5() renders, call mountStripeElements(widget) asynchronously:
+  a. Inject <script src="https://js.stripe.com/v3/"> into the main document
+     if not already present. Wait for window.Stripe to be available.
+  b. Upsert customer (same logic as Phase 5 change 4a) to get customerId.
+  c. POST CREATE_SETUP_INTENT_URL with { bookingData: { customerId,
+     serviceId: state.service.id, clientId: businessId,
+     customerEmail: state.contact.email, customerName: state.contact.name } }
+  d. const stripe = Stripe(STRIPE_PUBLISHABLE_KEY)
+     const elements = stripe.elements({ clientSecret })
+     Mount into shadow root:
+       elements.create('cardNumber').mount(root.querySelector('#stripe-card-number'))
+       elements.create('cardExpiry').mount(root.querySelector('#stripe-card-expiry'))
+       elements.create('cardCvc').mount(root.querySelector('#stripe-card-cvc'))
+     Store: widget._stripeElements = { stripe, cardNumber, clientSecret }
+
+In _next() when step === 5:
+  a. Disable button → "Processing…"
+  b. stripe.confirmCardSetup(clientSecret, {
+       payment_method: { card: cardNumber,
+         billing_details: { name: contact.name, email: contact.email } }
+     })
+  c. On error: show in .bw-error, re-enable button
+  d. On success: widget.state.paymentMethodId = setupIntent.payment_method
+  e. Proceed with booking INSERT including payment_method_id
+  f. Advance to step 6
+
+────────────────────────────────────────────────────────────────────────────────
+UPDATE: js/pages/bookings.js — wire Mark No-show to Edge Function
+────────────────────────────────────────────────────────────────────────────────
+Add at top:
+  const CHARGE_NOSHOW_URL = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/charge-noshow'
+
+Replace the placeholder markNoshow with:
+  async function markNoshow(bookingId, buttonEl):
+    buttonEl.disabled = true
+    buttonEl.textContent = 'Charging…'
+    const session = await getSession()
+    const res = await fetch(CHARGE_NOSHOW_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json',
+                 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify({ bookingId })
+    })
+    const json = await res.json()
+    if (json.success):
+      const row = buttonEl.closest('tr')
+      row.querySelector('.status-pill').className = 'status-pill noshow'
+      row.querySelector('.status-pill').textContent = 'No-show'
+      buttonEl.disabled = true
+      buttonEl.textContent = 'Mark No-show'
+    else:
+      buttonEl.disabled = false
+      buttonEl.textContent = 'Mark No-show'
+      alert('Charge failed: ' + (json.error || 'Unknown error'))
+
+  └───────────────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PHASE 7 — REALTIME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  IN SUPABASE DASHBOARD
+  ─────────────────────
+  1. Database → Replication → find "supabase_realtime" publication
+  2. Click Edit → tick the "bookings" table → Save
+     (No other tables need realtime.)
+
+  ┌─ PASTE INTO CLAUDE CODE ──────────────────────────────────────────────────┐
+
+Update js/pages/dashboard.js to add a Supabase Realtime subscription.
+Do not change any HTML structure, layout, or styles.
+
+After all four initial data queries complete, add:
+
+  const channel = supabase
+    .channel('dashboard-bookings')
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'bookings',
+      filter: 'client_id=eq.' + clientId
+    }, handleBookingChange)
+    .subscribe()
+
+  window.addEventListener('beforeunload', () => supabase.removeChannel(channel))
+
+handleBookingChange(payload):
+
+  INSERT event:
+    If payload.new.date === todayISO:
+      a. Fetch full row: bookings JOIN customers(name) JOIN services(name, duration_mins)
+         WHERE id = payload.new.id
+      b. Prepend a new .booking-list-item (same template as above) after
+         .panel-header inside the Today's Schedule panel
+      c. Increment .stat-value in "Today's Bookings" card by 1
+      d. Increment .panel-badge count by 1
+
+  UPDATE event:
+    Find .booking-list-item[data-booking-id="{payload.new.id}"] in the DOM.
+    If found: update .status-pill className and text to match payload.new.status
+
+  DELETE event:
+    Remove .booking-list-item[data-booking-id="{payload.old.id}"] from the DOM.
+
+  └───────────────────────────────────────────────────────────────────────────┘
