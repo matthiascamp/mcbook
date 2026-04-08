@@ -9,10 +9,11 @@
   <style>
     /* ── Design tokens ── */
     :root {
-      --bg:          #0a0a0f;
-      --surface:     #111118;
-      --surface-2:   #14141d;
-      --border:      #1e1e2e;
+      --bg:          #05050a;
+      --surface:     #0f0f1a;
+      --surface-2:   #141424;
+      --border:      rgba(255,255,255,0.09);
+      --border-2:    rgba(255,255,255,0.16);
       --accent:      #4ade80;
       --accent-dim:  rgba(74,222,128,0.75);
       --accent-bg:   rgba(74,222,128,0.07);
@@ -40,7 +41,16 @@
 
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: var(--bg); color: var(--text); min-height: 100vh;
+      background: var(--bg);
+      background-image: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(74,222,128,0.04) 0%, transparent 60%);
+      color: var(--text); min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: -1;
     }
 
     /* ══════════════════════════════════════
@@ -107,14 +117,18 @@
     ══════════════════════════════════════ */
 
     .btn-primary {
-      padding: 8px 16px;
-      background: var(--accent); color: #0a0a0f;
-      border: 1px solid var(--accent); border-radius: var(--radius-sm);
+      padding: 9px 20px;
+      background: var(--accent); color: #050a08;
+      border: none; border-radius: 50px;
       font-size: 0.85rem; font-weight: 700; font-family: inherit;
       cursor: pointer; white-space: nowrap;
-      transition: filter var(--ease), box-shadow var(--ease);
+      transition: filter var(--ease), box-shadow var(--ease), transform var(--ease);
     }
-    .btn-primary:hover { filter: brightness(1.08); box-shadow: var(--accent-glow); }
+    .btn-primary:hover {
+      filter: brightness(1.08);
+      box-shadow: 0 0 24px rgba(74,222,128,0.3);
+      transform: translateY(-1px);
+    }
 
     /* Services list */
     .services-list { display: flex; flex-direction: column; gap: 12px; }
