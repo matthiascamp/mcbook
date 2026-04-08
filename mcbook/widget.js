@@ -35,6 +35,7 @@
   // ─── Stripe constants ─────────────────────────────────────────────────────
   const STRIPE_PUBLISHABLE_KEY  = 'pk_live_51TIM7W3KdzLQ6RvXRpuNTwZtQjLGq9s18uWusHKHo3aaoL2KmYccr2so1Zy0o1IkuzG0pi1WEzh82MiQPtoMrC6W00iOR1stqs';
   const CREATE_SETUP_INTENT_URL   = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/create-setup-intent';
+  const CONFIRM_BOOKING_URL       = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/confirm-booking';
 
   // ─── Mount real Stripe Elements (handles setup and payment intents) ──────────
   async function mountStripeElements(widget) {
@@ -177,7 +178,7 @@
   }
 
   // ─── Live slot generation ─────────────────────────────────────────────────
-  async function getAvailableSlots(businessId, dateObj) {
+  async function getAvailableSlots(businessId, dateObj, serviceDurationMins) {
     const dateISO   = dateObj.toISOString().slice(0, 10);
     const dayOfWeek = dateObj.getDay();
 
@@ -248,7 +249,12 @@
       breakEnd   = btH * 60 + btM;
     }
 
+    const durMins = serviceDurationMins > 0 ? serviceDurationMins : slotMins;
+
     while (cur < endTotal) {
+      // Skip slots where the service would run past business hours
+      if (cur + durMins > endTotal) break;
+
       // Skip slots that fall inside the blocked period
       if (breakStart >= 0 && cur >= breakStart && cur < breakEnd) {
         cur += slotMins;
@@ -1088,7 +1094,7 @@
       // If slots not yet loaded, show loading state and kick off fetch
       if (!this._slots) {
         (async () => {
-          this._slots = await getAvailableSlots(this.businessId, this.state.date);
+          this._slots = await getAvailableSlots(this.businessId, this.state.date, this.state.service?.duration_mins || 0);
           if (this.state.step === 3) this._render();
         })();
         return `
@@ -1240,7 +1246,7 @@
           <div class="bw-confirm-icon">&#10003;</div>
           <h3>You're all booked, ${contact.name ? contact.name.split(' ')[0] : 'there'}!</h3>
           <p>
-            A confirmation has been sent to <strong>${contact.email || 'your email'}</strong>.<br>
+            ${contact.phone ? `A text message confirmation has been sent to <strong>${contact.phone}</strong>.` : 'You will receive a text message confirmation shortly.'}<br>
             We look forward to seeing you.
           </p>
           <div class="bw-summary" style="text-align:left;margin-top:20px;">
@@ -1364,14 +1370,24 @@
         const name  = this.root.querySelector('#bw-name').value.trim();
         const email = this.root.querySelector('#bw-email').value.trim();
         const phone = this.root.querySelector('#bw-phone').value.trim();
+        const errEl = this.root.querySelector('#bw-contact-err');
         if (!name || !email || !phone) {
-          this.root.querySelector('#bw-contact-err').classList.add('visible');
+          errEl.textContent = 'Please fill in all fields.';
+          errEl.classList.add('visible');
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          errEl.textContent = 'Please enter a valid email address.';
+          errEl.classList.add('visible');
           return;
         }
         this.state.contact = { name, email, phone };
       }
 
       if (this.state.step === 5) {
+        if (this._processing) return; // prevent double-submit
+        this._processing = true;
+
         const nextBtn = this.root.querySelector('#bw-next');
         const errEl   = this.root.querySelector('#bw-confirm-err');
         nextBtn.disabled    = true;
@@ -1399,8 +1415,17 @@
                 .insert({ client_id: this.businessId, name: contact.name,
                           email: contact.email, phone: contact.phone })
                 .select('id').single();
-              if (custErr) throw custErr;
-              customerId = newCust.id;
+              if (custErr && custErr.code === '23505') {
+                // Race condition: another request just created this customer
+                const { data: retry } = await sb.from('customers')
+                  .select('id').eq('client_id', this.businessId).eq('email', contact.email)
+                  .limit(1).maybeSingle();
+                if (retry) { customerId = retry.id; } else { throw custErr; }
+              } else if (custErr) {
+                throw custErr;
+              } else {
+                customerId = newCust.id;
+              }
             }
             const { data: booking, error: bookErr } = await sb.from('bookings')
               .insert({ client_id: this.businessId, customer_id: customerId,
@@ -1409,6 +1434,13 @@
             if (bookErr) throw bookErr;
             this.state.bookingId = booking.id;
             this.state.ref       = 'BK-' + booking.id.slice(0, 6).toUpperCase();
+            // Send confirmation SMS (fire-and-forget)
+            fetch(CONFIRM_BOOKING_URL, {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ bookingId: booking.id }),
+            }).catch(() => {});
+            this._processing = false;
             this.state.step++;
             this._render();
             return;
@@ -1424,10 +1456,20 @@
           });
           if (stripeErr) throw new Error(stripeErr.message);
 
+          // Upsert customer (card path uses mountStripeElements which already created customer,
+          // but handle race condition defensively)
+          let customerId = this._customerId;
+          if (!customerId) {
+            const { data: existing } = await sb.from('customers')
+              .select('id').eq('client_id', this.businessId).eq('email', contact.email)
+              .limit(1).maybeSingle();
+            customerId = existing?.id;
+          }
+
           const { data: booking, error: bookErr } = await sb.from('bookings')
             .insert({
               client_id:         this.businessId,
-              customer_id:       this._customerId,
+              customer_id:       customerId,
               service_id:        service.id,
               date:              dateISO,
               time:              timeHHMM,
@@ -1439,15 +1481,21 @@
 
           this.state.bookingId = booking.id;
           this.state.ref       = 'BK-' + booking.id.slice(0, 6).toUpperCase();
+          // Send confirmation SMS (fire-and-forget)
+          fetch(CONFIRM_BOOKING_URL, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ bookingId: booking.id }),
+          }).catch(() => {});
           destroyStripeSlots(this);
+          this._processing = false;
           this.state.step++;
           this._render();
         } catch (err) {
+          this._processing = false;
           const nextBtn2 = this.root.querySelector('#bw-next');
           const errEl2   = this.root.querySelector('#bw-confirm-err');
-          const mode     = this.state.service?.payment_mode || 'free';
-          const label    = 'Book';
-          if (nextBtn2) { nextBtn2.disabled = false; nextBtn2.textContent = label; }
+          if (nextBtn2) { nextBtn2.disabled = false; nextBtn2.textContent = 'Book'; }
           if (errEl2)   { errEl2.textContent = err.message || 'Something went wrong. Please try again.'; errEl2.classList.add('visible'); }
         }
         return;
@@ -1469,6 +1517,7 @@
 
     _reset() {
       this._slots      = null; // clear slot cache (date will change); keep this._services
+      this._processing = false;
       destroyStripeSlots(this);
       this._customerId = null;
       this.state = {

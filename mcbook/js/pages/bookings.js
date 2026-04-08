@@ -250,27 +250,40 @@ async function markNoshow(bookingId, buttonEl) {
   buttonEl.disabled    = true
   buttonEl.textContent = 'Charging\u2026'
 
-  const session = await getSession()
-  const res  = await fetch(CHARGE_NOSHOW_URL, {
-    method:  'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': 'Bearer ' + session.access_token,
-    },
-    body: JSON.stringify({ bookingId }),
-  })
-  const json = await res.json()
+  try {
+    const session = await getSession()
+    if (!session) {
+      buttonEl.disabled    = false
+      buttonEl.textContent = 'No-show + Charge'
+      alert('Session expired — please refresh the page and try again.')
+      return
+    }
+    const res  = await fetch(CHARGE_NOSHOW_URL, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+      },
+      body: JSON.stringify({ bookingId }),
+    })
+    const json = await res.json()
 
-  if (json.success) {
-    const tr   = buttonEl.closest('tr')
-    const pill = tr?.querySelector('.status-pill')
-    if (pill) { pill.className = 'status-pill noshow'; pill.textContent = 'No-show' }
-    buttonEl.disabled    = true
-    buttonEl.textContent = 'Mark No-show'
-  } else {
+    if (json.success) {
+      const tr   = buttonEl.closest('tr')
+      const pill = tr?.querySelector('.status-pill')
+      if (pill) { pill.className = 'status-pill noshow'; pill.textContent = 'No-show' }
+      buttonEl.disabled    = true
+      buttonEl.textContent = 'Charged'
+      tr?.querySelectorAll('.btn-waive, .btn-cancel').forEach(b => b.setAttribute('disabled', ''))
+    } else {
+      buttonEl.disabled    = false
+      buttonEl.textContent = 'No-show + Charge'
+      alert('Charge failed: ' + (json.error || 'Unknown error'))
+    }
+  } catch (err) {
     buttonEl.disabled    = false
-    buttonEl.textContent = 'Mark No-show'
-    alert('Charge failed: ' + (json.error || 'Unknown error'))
+    buttonEl.textContent = 'No-show + Charge'
+    alert('Network error — please check your connection and try again.')
   }
 }
 
