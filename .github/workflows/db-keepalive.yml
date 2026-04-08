@@ -1,0 +1,28 @@
+name: Supabase DB Keep-Alive
+
+on:
+  schedule:
+    # Runs every day at 12:00 UTC — keeps the free-tier DB from pausing
+    - cron: '0 12 * * *'
+  workflow_dispatch: # allow manual trigger
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "https://uijudgnqawtvjyjuyuwo.supabase.co/rest/v1/clients?select=id&limit=1" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVkZ25xYXd0dmp5anV5dXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjI1NDQsImV4cCI6MjA5MTA5ODU0NH0.MkIJL-GmeAzUsyinykQWa0-4mjAWTf-WEuZelLouDYg" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVkZ25xYXd0dmp5anV5dXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjI1NDQsImV4cCI6MjA5MTA5ODU0NH0.MkIJL-GmeAzUsyinykQWa0-4mjAWTf-WEuZelLouDYg")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+          echo "Supabase ping status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "206" ]; then
+            echo "Unexpected response: $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "DB is active."
