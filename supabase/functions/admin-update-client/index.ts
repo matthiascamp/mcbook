@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Invalid JSON body' }, 400)
     }
 
-    const { client_id, platform_fee_percent, widget_custom_styling } = body
+    const { client_id, platform_fee_percent, widget_custom_styling, widget_theme } = body
 
     if (!client_id || typeof client_id !== 'string') {
       return json({ error: 'client_id is required' }, 400)
@@ -77,6 +77,11 @@ Deno.serve(async (req: Request) => {
 
     if (widget_custom_styling !== undefined) {
       updatePayload.widget_custom_styling = Boolean(widget_custom_styling)
+    }
+
+    if (widget_theme !== undefined) {
+      // null = reset to default; object = custom palette
+      updatePayload.widget_theme = widget_theme === null ? null : widget_theme
     }
 
     if (Object.keys(updatePayload).length === 0) {

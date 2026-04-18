@@ -251,6 +251,73 @@
     .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
     .sidebar-overlay.active { display: block; }
 
+    /* ── Capacity panel ── */
+    .capacity-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-top: 20px; display: none;
+    }
+    .capacity-panel-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .capacity-panel-title { font-size: 0.88rem; font-weight: 700; }
+    .capacity-panel-sub   { font-size: 0.76rem; color: var(--text-2); margin-top: 2px; }
+    .capacity-panel-body  { padding: 20px; }
+    .capacity-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.875rem;
+    }
+    .capacity-row:last-child { border-bottom: none; }
+    .capacity-label { font-weight: 500; }
+    .capacity-sub   { font-size: 0.76rem; color: var(--text-2); margin-top: 2px; }
+    .capacity-input {
+      width: 84px; padding: 7px 10px;
+      border: 1px solid var(--border); border-radius: 7px;
+      font-size: 0.875rem; font-family: inherit;
+      color: var(--text); background: var(--surface-2);
+      outline: none; transition: border-color var(--ease); text-align: center;
+    }
+    .capacity-input:focus { border-color: var(--accent); }
+    .seating-section-label {
+      font-size: 0.74rem; font-weight: 700; color: var(--text-2);
+      text-transform: uppercase; letter-spacing: 0.07em;
+      margin: 16px 0 4px;
+    }
+    .seating-section-hint { font-size: 0.73rem; color: var(--text-2); margin-bottom: 12px; }
+    .seating-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .seating-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.85rem;
+    }
+    .seating-item-left { display: flex; align-items: center; gap: 14px; }
+    .seating-name { font-weight: 600; font-size: 0.92rem; }
+    .seating-cap  { font-size: 0.78rem; color: var(--text-2); margin-top: 3px; }
+    .btn-remove-area {
+      background: none; border: none; color: var(--text-2);
+      cursor: pointer; font-size: 1rem; padding: 2px 5px;
+      border-radius: 4px; transition: color var(--ease), background var(--ease);
+    }
+    .btn-remove-area:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
+    .add-seating-form { display: flex; gap: 8px; flex-wrap: wrap; }
+    .add-seating-form input[type="text"] {
+      flex: 1; min-width: 120px; padding: 8px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 0.84rem; font-family: inherit;
+      color: var(--text); background: var(--surface-2);
+      outline: none; transition: border-color var(--ease);
+    }
+    .add-seating-form input[type="number"] {
+      width: 84px; padding: 8px 10px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 0.84rem; font-family: inherit;
+      color: var(--text); background: var(--surface-2);
+      outline: none; transition: border-color var(--ease); text-align: center;
+    }
+    .add-seating-form input:focus { border-color: var(--accent); }
+    .add-seating-form input::placeholder { color: var(--text-2); opacity: 0.65; }
+
     /* Responsive */
     @media (max-width: 768px) {
       .hamburger { display: flex; }
@@ -325,12 +392,33 @@
     <main class="content">
 
       <!-- Services list -->
-      <div class="services-list">
+      <div class="services-list" style="display:none">
       </div>
       <!-- /services-list -->
 
+      <!-- ── Capacity & Seating Areas (restaurant mode only) ── -->
+      <div class="capacity-panel" id="capacity-panel">
+        <div class="capacity-panel-header">
+          <div>
+            <div class="capacity-panel-title">Seating Areas</div>
+            <div class="capacity-panel-sub">Add named zones — total capacity is calculated from these automatically</div>
+          </div>
+        </div>
+        <div class="capacity-panel-body">
+
+          <div class="seating-section-hint" style="margin-top:0;margin-bottom:12px;">e.g. Inside, Outside, Bar, Private Dining</div>
+          <div class="seating-list" id="seating-list"></div>
+          <div class="add-seating-form">
+            <input type="text" id="seating-name-input" placeholder="Area name (e.g. Outside)">
+            <input type="number" id="seating-cap-input" placeholder="Seats" min="1" max="999">
+            <button class="btn-primary" id="btn-add-seating" style="padding:8px 14px;font-size:0.84rem;border-radius:var(--radius-sm);">+ Add Area</button>
+          </div>
+
+        </div>
+      </div>
+
       <!-- ── Add new service form ── -->
-      <div class="add-service-panel">
+      <div class="add-service-panel" style="display:none">
         <div class="add-service-header">
           <span style="font-size:1.1rem;">&#43;</span>
           <span class="add-service-header-title">Add New Service</span>

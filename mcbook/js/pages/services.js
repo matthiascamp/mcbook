@@ -34,6 +34,7 @@ function durationSelectValue(mins) {
 let uid = ''
 let editId = null
 let stripeEnabled = false
+let isRestaurant = false
 
 // ── Render ────────────────────────────────────────────────────────────────────
 async function loadServices() {
@@ -88,8 +89,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadSidebarUser(uid)
 
   const { data: clientData } = await supabase.from('clients')
-    .select('stripe_charges_enabled').eq('id', uid).single()
+    .select('stripe_charges_enabled, business_mode').eq('id', uid).single()
   stripeEnabled = clientData?.stripe_charges_enabled ?? false
+  isRestaurant  = clientData?.business_mode === 'restaurant'
+
+  const capacityPanel = document.getElementById('capacity-panel')
+  if (isRestaurant) {
+    // Topbar
+    document.querySelector('.topbar-title').textContent = 'Seating'
+    document.querySelector('.topbar-right .btn-primary').style.display = 'none'
+    // Sidebar label
+    const svcLink = document.querySelector('.nav-link.active')
+    if (svcLink) svcLink.innerHTML = svcLink.innerHTML.replace('Services', 'Seating')
+    // Show seating panel
+    if (capacityPanel) capacityPanel.style.display = 'block'
+    await loadSeatingAreas()
+  } else {
+    // Reveal service UI (hidden by default to prevent flash)
+    document.querySelector('.services-list').style.display = ''
+    document.querySelector('.add-service-panel').style.display = ''
+  }
 
   await loadServices()
 
@@ -191,4 +210,103 @@ document.addEventListener('DOMContentLoaded', async () => {
   })
 
   cancelBtn.addEventListener('click', clearForm)
+
+  document.getElementById('btn-add-seating')?.addEventListener('click', async () => {
+    const nameVal = document.getElementById('seating-name-input')?.value.trim()
+    const capVal  = parseInt(document.getElementById('seating-cap-input')?.value || '0', 10)
+    if (!nameVal || !capVal || capVal < 1) { alert('Please enter an area name and capacity.'); return }
+    const { error: insErr } = await supabase.from('seating_areas').insert({ client_id: uid, name: nameVal, capacity: capVal })
+    if (insErr) { console.error('[seating_areas insert]', insErr.message, insErr); alert('Error saving: ' + insErr.message); return }
+    document.getElementById('seating-name-input').value = ''
+    document.getElementById('seating-cap-input').value  = ''
+    await loadSeatingAreas()
+  })
 })
+
+async function loadSeatingAreas() {
+  const { data, error } = await supabase.from('seating_areas')
+    .select('*').eq('client_id', uid).eq('active', true).order('created_at', { ascending: true })
+  if (error) { console.error('[seating_areas fetch]', error.message, error); return }
+  console.log('[seating_areas]', data)
+  const list = document.getElementById('seating-list')
+  if (!list) return
+  list.innerHTML = ''
+
+  for (const area of data ?? []) {
+    const div = document.createElement('div')
+    div.className = 'seating-item'
+    div.dataset.areaId = area.id
+
+    // ── View row ──
+    const view = document.createElement('div')
+    view.className = 'seating-item-view'
+    view.style.cssText = 'display:flex;align-items:center;justify-content:space-between;width:100%;'
+    view.innerHTML = `
+      <div class="seating-item-left">
+        <span style="font-size:1.1rem;">&#127869;&#65039;</span>
+        <div>
+          <div class="seating-name">${area.name}</div>
+          <div class="seating-cap">${area.capacity} seats</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-edit-area"
+          style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.35);color:var(--accent);cursor:pointer;font-size:0.78rem;font-weight:600;font-family:inherit;padding:5px 12px;border-radius:6px;">Edit</button>
+        <button class="btn-remove-area"
+          style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.35);color:#ef4444;cursor:pointer;font-size:0.78rem;font-weight:600;font-family:inherit;padding:5px 12px;border-radius:6px;" title="Delete">Delete</button>
+      </div>
+    `
+
+    // ── Edit row (hidden initially) ──
+    const editRow = document.createElement('div')
+    editRow.style.cssText = 'display:none;align-items:center;gap:8px;flex-wrap:wrap;width:100%;'
+    const nameInp = document.createElement('input')
+    nameInp.type = 'text'; nameInp.value = area.name
+    nameInp.style.cssText = 'flex:1;min-width:110px;padding:8px 11px;border:1px solid var(--accent);border-radius:6px;font-size:0.88rem;font-family:inherit;color:var(--text);background:var(--surface-2);outline:none;'
+    const capInp = document.createElement('input')
+    capInp.type = 'number'; capInp.value = area.capacity; capInp.min = '1'; capInp.max = '9999'
+    capInp.style.cssText = 'width:90px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.88rem;font-family:inherit;color:var(--text);background:var(--surface-2);outline:none;text-align:center;'
+    const saveBtn = document.createElement('button')
+    saveBtn.textContent = 'Save'
+    saveBtn.style.cssText = 'padding:7px 14px;background:var(--accent);color:#050a08;border:none;border-radius:6px;font-size:0.82rem;font-weight:700;font-family:inherit;cursor:pointer;'
+    const cancelBtn = document.createElement('button')
+    cancelBtn.textContent = 'Cancel'
+    cancelBtn.style.cssText = 'padding:7px 12px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-2);font-size:0.82rem;font-family:inherit;cursor:pointer;'
+    const editBtns = document.createElement('div')
+    editBtns.style.cssText = 'display:flex;gap:6px;flex-shrink:0;'
+    editBtns.append(saveBtn, cancelBtn)
+    editRow.append(nameInp, capInp, editBtns)
+
+    div.append(view, editRow)
+    list.appendChild(div)
+
+    // ── Wire up buttons directly ──
+    view.querySelector('.btn-edit-area').addEventListener('click', () => {
+      view.style.display = 'none'
+      editRow.style.display = 'flex'
+      nameInp.focus()
+    })
+
+    view.querySelector('.btn-remove-area').addEventListener('click', async () => {
+      if (!confirm('Delete this seating area?')) return
+      await supabase.from('seating_areas').delete().eq('id', area.id)
+      await loadSeatingAreas()
+    })
+
+    cancelBtn.addEventListener('click', () => {
+      nameInp.value = area.name
+      capInp.value  = area.capacity
+      editRow.style.display = 'none'
+      view.style.display = 'flex'
+    })
+
+    saveBtn.addEventListener('click', async () => {
+      const nameVal = nameInp.value.trim()
+      const capVal  = parseInt(capInp.value, 10)
+      if (!nameVal || capVal < 1) return
+      saveBtn.textContent = 'Saving…'; saveBtn.disabled = true
+      await supabase.from('seating_areas').update({ name: nameVal, capacity: capVal }).eq('id', area.id)
+      await loadSeatingAreas()
+    })
+  }
+}

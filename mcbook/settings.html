@@ -136,6 +136,65 @@
     .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
     .sidebar-overlay.active { display: block; }
 
+    /* ── Danger zone ── */
+    .danger-zone {
+      background: var(--surface); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; max-width: 600px;
+    }
+    .danger-zone-header {
+      padding: 16px 20px; border-bottom: 1px solid rgba(239,68,68,0.15);
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(239,68,68,0.04);
+    }
+    .danger-zone-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(239,68,68,0.1); color: var(--danger); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; }
+    .danger-zone-title { font-size: 0.88rem; font-weight: 700; color: var(--danger); }
+    .danger-zone-sub   { font-size: 0.73rem; color: var(--text-2); margin-top: 2px; }
+    .danger-zone-body  { padding: 20px; }
+    .danger-current {
+      font-size: 0.8rem; color: var(--text-2); margin-bottom: 16px;
+      padding: 10px 14px; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .danger-current strong { color: var(--text); }
+    .danger-warning {
+      font-size: 0.78rem; color: var(--danger); line-height: 1.6;
+      padding: 12px 14px; background: rgba(239,68,68,0.06);
+      border: 1px solid rgba(239,68,68,0.18); border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+    }
+    .danger-warning ul { margin: 6px 0 0 16px; }
+    .danger-confirm-panel { display: none; margin-top: 16px; }
+    .danger-confirm-panel.open { display: block; }
+    .danger-confirm-label { font-size: 0.75rem; color: var(--text-2); margin-bottom: 7px; }
+    .danger-confirm-label strong { color: var(--danger); }
+    .danger-confirm-input {
+      width: 100%; padding: 10px 13px;
+      background: var(--bg); border: 1px solid rgba(239,68,68,0.3);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: inherit; font-size: 0.88rem; outline: none;
+      transition: border-color var(--ease);
+      margin-bottom: 12px;
+    }
+    .danger-confirm-input:focus { border-color: var(--danger); }
+    .btn-danger-confirm {
+      padding: 9px 20px; background: var(--danger); color: #fff;
+      border: none; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: filter var(--ease), opacity var(--ease);
+    }
+    .btn-danger-confirm:disabled { opacity: 0.35; cursor: default; }
+    .btn-danger-confirm:not(:disabled):hover { filter: brightness(1.12); }
+    .biz-mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .biz-mode-card {
+      padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius);
+      cursor: pointer; background: var(--bg); transition: border-color var(--ease), background var(--ease), box-shadow var(--ease);
+    }
+    .biz-mode-card:hover { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.03); }
+    .biz-mode-card.selected { border-color: var(--danger); background: rgba(239,68,68,0.06); }
+    .biz-mode-icon { font-size: 1.5rem; margin-bottom: 6px; }
+    .biz-mode-name { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .biz-mode-desc { font-size: 0.72rem; color: var(--text-2); line-height: 1.45; }
+
     /* ── Responsive ── */
     @media (max-width: 768px) {
       .hamburger { display: flex; }
@@ -158,12 +217,13 @@
     // ── Load profile ──────────────────────────────────────────────────────────
     const { data: client } = await supabase
       .from('clients')
-      .select('business_name, email')
+      .select('business_name, email, business_mode')
       .eq('id', session.user.id)
       .single()
 
     const currentEmail = session.user.email ?? ''
     const bizName      = client?.business_name ?? ''
+    let currentMode    = client?.business_mode ?? 'service'
 
     // Populate sidebar
     document.getElementById('sidebar-avatar').textContent = (bizName || 'MB').slice(0, 2).toUpperCase()
@@ -172,6 +232,77 @@
     // Populate fields
     document.getElementById('email-display').value = currentEmail
     document.getElementById('biz-name-input').value = bizName
+
+    // ── Danger zone — business mode switch ───────────────────────────────────
+    const modeLabel = m => m === 'restaurant' ? 'Restaurant' : 'Service Business'
+    const modeIcon  = m => m === 'restaurant' ? '🍽️' : '✂️'
+
+    function renderDangerZone() {
+      const targetMode  = currentMode === 'restaurant' ? 'service' : 'restaurant'
+      document.getElementById('danger-current-label').innerHTML =
+        `Currently set to <strong>${modeIcon(currentMode)} ${modeLabel(currentMode)}</strong>`
+      document.getElementById('danger-switch-btn').textContent =
+        `Switch to ${modeIcon(targetMode)} ${modeLabel(targetMode)} mode`
+      document.getElementById('danger-to-label').innerHTML =
+        `Type <strong>SWITCH</strong> to confirm switching to <strong>${modeLabel(targetMode)}</strong>`
+      document.getElementById('danger-confirm-input').value = ''
+      const execBtn = document.getElementById('danger-execute-btn')
+      execBtn.disabled = true
+      execBtn.textContent = 'Confirm switch — I understand all data will be deleted'
+      document.getElementById('danger-confirm-panel').classList.remove('open')
+    }
+    renderDangerZone()
+
+    // Step 1: clicking "Switch to X" reveals the confirmation panel
+    document.getElementById('danger-switch-btn').addEventListener('click', () => {
+      document.getElementById('danger-confirm-panel').classList.add('open')
+      document.getElementById('danger-confirm-input').focus()
+    })
+
+    // Step 2: enable execute button only when user has typed SWITCH
+    document.getElementById('danger-confirm-input').addEventListener('input', (e) => {
+      document.getElementById('danger-execute-btn').disabled = e.target.value.trim() !== 'SWITCH'
+    })
+
+    // Step 3: execute the switch — wipe everything then update mode
+    document.getElementById('danger-execute-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('danger-execute-btn')
+      const msg = document.getElementById('danger-msg')
+      const targetMode = currentMode === 'restaurant' ? 'service' : 'restaurant'
+      msg.className = 'field-msg'
+      btn.disabled = true; btn.textContent = 'Switching…'
+
+      try {
+        const uid = session.user.id
+        // Delete payment records first (FK dependency on bookings)
+        await supabase.from('payments').delete().eq('client_id', uid)
+        // Hard delete all bookings
+        await supabase.from('bookings').delete().eq('client_id', uid)
+        // Hard delete all services
+        await supabase.from('services').delete().eq('client_id', uid)
+        // Hard delete all seating areas
+        await supabase.from('seating_areas').delete().eq('client_id', uid)
+        // Clear total capacity
+        await supabase.from('booking_settings').update({ total_capacity: null }).eq('client_id', uid)
+        // Update mode
+        const { error } = await supabase.from('clients').update({ business_mode: targetMode }).eq('id', uid)
+        if (error) throw error
+        // Seed default service for the new mode
+        if (targetMode === 'restaurant') {
+          await supabase.from('services').insert({
+            client_id: uid, name: 'Table Booking', duration_mins: 60,
+            price: 0, noshow_fee: 0, payment_mode: 'free', active: true,
+          })
+        }
+        currentMode = targetMode
+        renderDangerZone()
+        msg.textContent = `✓ Switched to ${modeLabel(targetMode)}. All bookings and services have been permanently deleted.`
+        msg.classList.add('success')
+      } catch (err) {
+        msg.textContent = err.message; msg.classList.add('error')
+        btn.disabled = false; btn.textContent = 'Confirm switch — I understand all data will be deleted'
+      }
+    })
 
     // ── Save business name ────────────────────────────────────────────────────
     document.getElementById('biz-name-form').addEventListener('submit', async (e) => {
@@ -373,6 +504,56 @@
             </div>
             <div class="field-msg" id="password-msg"></div>
           </form>
+        </div>
+      </div>
+
+      <!-- Danger zone — business type switch -->
+      <div class="danger-zone">
+        <div class="danger-zone-header">
+          <div class="danger-zone-icon">&#9888;&#65039;</div>
+          <div>
+            <div class="danger-zone-title">Danger Zone</div>
+            <div class="danger-zone-sub">Switching business type permanently wipes your data. This cannot be undone.</div>
+          </div>
+        </div>
+        <div class="danger-zone-body">
+
+          <div class="danger-current" id="danger-current-label"></div>
+
+          <div class="danger-warning">
+            <strong>Switching business type will permanently delete:</strong>
+            <ul>
+              <li>All current and past bookings</li>
+              <li>All services / sessions</li>
+              <li>All seating areas and capacity settings</li>
+            </ul>
+            <br>This action cannot be undone. Your customer records and payment history are not affected.
+          </div>
+
+          <button type="button" class="btn-danger" id="danger-switch-btn"></button>
+
+          <div class="danger-confirm-panel" id="danger-confirm-panel">
+            <hr class="card-divider">
+            <div class="biz-mode-grid" style="margin-top:14px;">
+              <div class="biz-mode-card" data-mode="service">
+                <div class="biz-mode-icon">&#9999;&#65039;</div>
+                <div class="biz-mode-name">Service Business</div>
+                <div class="biz-mode-desc">One booking per slot — salons, studios, consultants.</div>
+              </div>
+              <div class="biz-mode-card" data-mode="restaurant">
+                <div class="biz-mode-icon">&#127869;&#65039;</div>
+                <div class="biz-mode-name">Restaurant</div>
+                <div class="biz-mode-desc">Capacity-based slots — covers, party sizes, seating areas.</div>
+              </div>
+            </div>
+            <div class="danger-confirm-label" id="danger-to-label" style="margin-top:14px;"></div>
+            <input type="text" class="danger-confirm-input" id="danger-confirm-input" placeholder="Type SWITCH here" autocomplete="off">
+            <button type="button" class="btn-danger-confirm" id="danger-execute-btn" disabled>
+              Confirm switch — I understand all data will be deleted
+            </button>
+          </div>
+
+          <div class="field-msg" id="danger-msg" style="margin-top:12px;"></div>
         </div>
       </div>
 

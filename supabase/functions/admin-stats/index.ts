@@ -134,6 +134,7 @@ Deno.serve(async (req: Request) => {
         stripe_account_status:  client.stripe_account_status,
         platform_fee_percent:   feePct,
         widget_custom_styling:  client.widget_custom_styling ?? false,
+        widget_theme:           client.widget_theme ?? null,
         totalEarnings,
         myRevenue,
         bookingCount:   bookingCount ?? 0,

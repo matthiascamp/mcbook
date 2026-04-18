@@ -38,7 +38,7 @@ function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
 async function loadBookings() {
   const today = todayISO()
   let q = supabase.from('bookings')
-    .select('id, date, time, status, customers(name, email), services(name, payment_mode)', { count: 'exact' })
+    .select('id, date, time, status, party_size, customers(name, email), services(name, payment_mode)', { count: 'exact' })
     .eq('client_id', clientId)
     .neq('status', 'cancelled')
     .order('date', { ascending: false })
@@ -57,7 +57,7 @@ async function loadBookings() {
   tbody.innerHTML = ''
   for (const b of data ?? []) {
     const name = b.customers?.name ?? ''
-    const isScheduled = b.status === 'scheduled' || b.status === 'pending_payment'
+    const isScheduled = b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'pending_payment'
     const isChargeable = b.services?.payment_mode === 'noshow_only' || b.services?.payment_mode === 'after'
     const statusLabel = b.status === 'pending_payment' ? 'Scheduled' : capitalize(b.status.replace('_', ' '))
     const statusCls   = b.status === 'pending_payment' ? 'scheduled' : b.status
@@ -78,7 +78,7 @@ async function loadBookings() {
           </div>
         </div>
       </td>
-      <td>${b.services?.name ?? ''}${payTag}</td>
+      <td>${b.services?.name ?? ''}${payTag}${b.party_size > 1 ? `<div class="pay-tag">Party of ${b.party_size}</div>` : ''}</td>
       <td>${fmtDate(b.date)}</td>
       <td>${fmtTime(b.time)}</td>
       <td><span class="status-pill ${statusCls}">${statusLabel}</span></td>

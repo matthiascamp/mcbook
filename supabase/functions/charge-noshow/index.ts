@@ -58,8 +58,9 @@ Deno.serve(async (req: Request) => {
 
     if (bookErr || !booking) return json({ error: 'Booking not found' }, 404)
     if (booking.client_id !== user.id) return json({ error: 'Forbidden' }, 403)
-    if (booking.status !== 'scheduled' && booking.status !== 'pending_payment') {
-      return json({ error: 'Booking is not in a chargeable state' }, 422)
+    const chargeableStatuses = ['scheduled', 'confirmed', 'pending_payment']
+    if (!chargeableStatuses.includes(booking.status)) {
+      return json({ error: `Booking cannot be charged (status: ${booking.status})` }, 422)
     }
 
     const service = booking.services as any

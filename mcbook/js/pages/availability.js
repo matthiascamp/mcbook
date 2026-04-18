@@ -127,7 +127,9 @@ async function loadBookingSettings() {
     ? '1 hour' : `${data.min_notice_hours} hours`
   if (payToggle)
     payToggle.checked = data.require_payment === true
+
 }
+
 
 // ── Stripe connection check ───────────────────────────────────────────────────
 async function applyStripeGate() {
@@ -421,4 +423,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (inputs[1]) inputs[1].value = ''
     loadBlockedDates()
   })
+
 })

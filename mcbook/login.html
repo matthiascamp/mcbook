@@ -375,7 +375,7 @@
   <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;padding:0 24px;">
   <div class="login-badge">
     <span class="badge-dot"></span>
-    Booking management for independent businesses
+    MC Development client portal
   </div>
 
   <div class="login-card">
@@ -389,7 +389,6 @@
     <!-- Tab switcher -->
     <div class="login-tabs">
       <button class="login-tab active" id="tab-signin" type="button">Sign In</button>
-      <button class="login-tab" id="tab-signup" type="button">Create Account</button>
       <button class="login-tab" id="tab-reset" type="button">Reset Password</button>
     </div>
 
@@ -434,49 +433,12 @@
         </form>
       </div>
 
-      <!-- Sign Up form -->
-      <div id="form-signup" style="display:none;">
-        <h1 class="login-title">Create your account</h1>
-        <p class="login-subtitle">Set up MCBook for your business in seconds.</p>
-        <div class="login-msg" id="signup-msg"></div>
-        <form id="signupForm">
-          <div class="field">
-            <label for="signup-business">Business Name</label>
-            <input type="text" id="signup-business" placeholder="e.g. Jane's Hair Studio" autocomplete="organization" required>
-          </div>
-          <div class="field">
-            <label for="signup-email">Email Address</label>
-            <input type="email" id="signup-email" placeholder="you@yourbusiness.com" autocomplete="email" required>
-          </div>
-          <div class="field">
-            <label for="signup-password">Password</label>
-            <div class="field-wrap">
-              <input type="password" id="signup-password" placeholder="At least 8 characters" autocomplete="new-password" required minlength="8">
-              <button type="button" class="btn-eye" aria-label="Toggle password visibility" data-target="signup-password">
-                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="field">
-            <label for="signup-confirm">Confirm Password</label>
-            <div class="field-wrap">
-              <input type="password" id="signup-confirm" placeholder="Repeat your password" autocomplete="new-password" required>
-              <button type="button" class="btn-eye" aria-label="Toggle password visibility" data-target="signup-confirm">
-                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-              </button>
-            </div>
-          </div>
-          <button type="submit" class="btn-login">Create Account</button>
-        </form>
-      </div>
 
     </div>
 
     <!-- Footer -->
     <div class="login-footer">
-      Need help? <a href="mailto:matthiasdevelopment@gmail.com">matthiasdevelopment@gmail.com</a>
+      Access is by invitation only &mdash; <a href="mailto:matthiasdevelopment@gmail.com">contact Matthias Development</a> to get started.
     </div>
 
   </div>
@@ -484,7 +446,7 @@
   </div>
 
   <script type="module">
-    import { signIn, signUp, resetPassword, ensureClientProfile } from './js/auth.js'
+    import { signIn, resetPassword, ensureClientProfile } from './js/auth.js'
 
     /* ── Password visibility toggles ── */
     document.querySelectorAll('.btn-eye').forEach(btn => {
@@ -499,28 +461,23 @@
 
     /* ── Tab switching ── */
     const tabSignIn  = document.getElementById('tab-signin')
-    const tabSignUp  = document.getElementById('tab-signup')
     const tabReset   = document.getElementById('tab-reset')
     const formSignIn = document.getElementById('form-signin')
-    const formSignUp = document.getElementById('form-signup')
     const formReset  = document.getElementById('form-reset')
 
     function showTab(active) {
       tabSignIn.classList.toggle('active', active === 'signin')
-      tabSignUp.classList.toggle('active', active === 'signup')
       tabReset.classList.toggle('active',  active === 'reset')
       formSignIn.style.display = active === 'signin' ? '' : 'none'
-      formSignUp.style.display = active === 'signup' ? '' : 'none'
       formReset.style.display  = active === 'reset'  ? '' : 'none'
     }
 
     tabSignIn.addEventListener('click', () => showTab('signin'))
-    tabSignUp.addEventListener('click', () => showTab('signup'))
     tabReset.addEventListener('click',  () => showTab('reset'))
 
-    // Hash-based initial tab
-    if (location.hash === '#signup') showTab('signup')
-    else if (location.hash === '#reset') showTab('reset')
+    // Hash-based initial tab (treat #signup as signin — signup is admin-only)
+    if (location.hash === '#reset') showTab('reset')
+    else showTab('signin')
 
     /* ── Sign In ── */
     document.getElementById('signinForm').addEventListener('submit', async (e) => {
@@ -547,51 +504,10 @@
       // Create clients row if this is their first login
       const uid          = data.user.id
       const businessName = data.user.user_metadata?.business_name
-      await ensureClientProfile(uid, businessName)
+      const businessMode = data.user.user_metadata?.business_mode
+      await ensureClientProfile(uid, businessName, businessMode)
 
       window.location.href = 'dashboard.html'
-    })
-
-    /* ── Sign Up ── */
-    document.getElementById('signupForm').addEventListener('submit', async (e) => {
-      e.preventDefault()
-      const msg          = document.getElementById('signup-msg')
-      const btn          = e.target.querySelector('button[type="submit"]')
-      const businessName = document.getElementById('signup-business').value.trim()
-      const email        = document.getElementById('signup-email').value.trim()
-      const password     = document.getElementById('signup-password').value
-      const confirm      = document.getElementById('signup-confirm').value
-
-      msg.className = 'login-msg'
-
-      if (password !== confirm) {
-        msg.textContent = 'Passwords do not match.'
-        msg.classList.add('error')
-        return
-      }
-
-      btn.disabled    = true
-      btn.textContent = 'Creating account…'
-
-      const { error } = await signUp(email, password, businessName)
-
-      if (error) {
-        msg.textContent = error.message
-        msg.classList.add('error')
-        btn.disabled    = false
-        btn.textContent = 'Create Account'
-        return
-      }
-
-      msg.textContent = '✓ Account created! Check your email to confirm, then sign in.'
-      msg.classList.add('success')
-      btn.disabled = true
-
-      // Switch to sign-in tab after 3 seconds
-      setTimeout(() => {
-        showTab('signin')
-        document.getElementById('signin-email').value = email
-      }, 3000)
     })
 
     /* ── Reset Password ── */

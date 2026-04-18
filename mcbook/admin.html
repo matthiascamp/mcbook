@@ -401,6 +401,26 @@
     .btn-details:hover  { border-color: rgba(74,222,128,0.4); color: var(--accent); }
     .btn-details.open   { background: var(--accent-bg); border-color: rgba(74,222,128,0.3); color: var(--accent); }
 
+    /* Widget CSS editor */
+    .theme-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .theme-section-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-2); margin-bottom: 4px; }
+    .theme-section-desc  { font-size: 0.72rem; color: var(--text-3); margin-bottom: 12px; }
+    .theme-quickgen { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+    .theme-swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .theme-swatch label { font-size: 0.65rem; color: var(--text-2); }
+    .theme-swatch input[type="color"] { width: 36px; height: 36px; border-radius: 7px; border: 1px solid var(--border); cursor: pointer; padding: 2px; background: transparent; }
+    .theme-swatch input[type="color"]:hover { border-color: var(--accent); }
+    .widget-css-editor {
+      width: 100%; min-height: 200px; max-height: 420px;
+      font-family: 'SF Mono','Fira Code','Cascadia Code',monospace;
+      font-size: 0.76rem; line-height: 1.55; tab-size: 2;
+      padding: 10px 12px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); resize: vertical; outline: none;
+    }
+    .widget-css-editor:focus { border-color: var(--accent); }
+    .theme-actions { display: flex; gap: 8px; margin-top: 10px; }
+
     /* Expansion row */
     .expansion-row { display: none; }
     .expansion-row.open { display: table-row; }
@@ -558,6 +578,123 @@
     .toggle-input:checked + .toggle-slider { background: rgba(74,222,128,0.3); border: 1px solid rgba(74,222,128,0.5); }
     .toggle-input:checked + .toggle-slider::before { transform: translateX(16px); background: var(--accent); }
 
+    /* ══ WIDGET THEME LAYOUT ═══════════════════════════════════════════════════ */
+    .theme-swatches {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .theme-font-row,
+    .theme-radius-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .theme-font-row label,
+    .theme-radius-row label {
+      width: 92px;
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-2);
+    }
+    .theme-font-row select {
+      flex: 1;
+      padding: 7px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.82rem;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .theme-font-row select:focus { border-color: var(--accent); }
+    .theme-radius-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .theme-radius-val {
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 600;
+      width: 34px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ══ CREATE CLIENT FORM ═════════════════════════════════════════════════════ */
+    .create-client-wrap { max-width: 540px; }
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 30px;
+    }
+    .form-card-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem; font-weight: 700;
+      letter-spacing: -0.02em; margin-bottom: 6px;
+    }
+    .form-card-desc {
+      font-size: 0.8rem; color: var(--text-2);
+      margin-bottom: 24px; line-height: 1.55;
+    }
+    .form-field { margin-bottom: 16px; }
+    .form-field label {
+      display: block;
+      font-size: 0.68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-3); margin-bottom: 7px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.88rem; font-family: inherit;
+      outline: none;
+      transition: border-color var(--ease), box-shadow var(--ease);
+    }
+    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,222,128,0.1); }
+    .form-input::placeholder { color: var(--text-3); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 500px) { .form-row { grid-template-columns: 1fr; } }
+    .btn-create {
+      padding: 11px 24px;
+      background: var(--accent); color: #0a0a0f;
+      border: none; border-radius: 50px;
+      font-size: 0.88rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: filter var(--ease); margin-top: 8px;
+    }
+    .btn-create:hover { filter: brightness(1.1); }
+    .btn-create:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+    .create-msg {
+      font-size: 0.82rem; border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 16px; display: none;
+    }
+    .create-msg.error   { display: block; color: var(--danger); background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); }
+    .create-msg.success { display: block; color: var(--accent); background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); }
+    .bmode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .bmode-card {
+      padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 8px; cursor: pointer;
+      background: rgba(255,255,255,0.02);
+      transition: border-color var(--ease), background var(--ease);
+    }
+    .bmode-card:hover { border-color: rgba(74,222,128,0.3); }
+    .bmode-card.selected { border-color: var(--accent); background: rgba(74,222,128,0.06); }
+    .bmode-icon { font-size: 1.1rem; margin-bottom: 4px; }
+    .bmode-name { font-size: 0.78rem; font-weight: 700; color: var(--text); }
+
     /* ══ RESPONSIVE ════════════════════════════════════════════════════════════ */
     @media (max-width: 1100px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -599,7 +736,7 @@
       <span class="sidebar-logo-text">MCBook Admin</span>
     </div>
     <nav class="nav">
-      <div class="nav-label">Navigation</div>
+      <div class="nav-label">Dashboard</div>
       <button class="nav-item active" id="nav-overview">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         Overview
@@ -608,9 +745,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Clients
       </button>
-      <button class="nav-item" id="nav-earnings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
-        Earnings
+      <div class="nav-label" style="margin-top:8px;">Management</div>
+      <button class="nav-item" id="nav-create-client">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+        Create Client
       </button>
     </nav>
     <div class="sidebar-footer">
@@ -719,6 +857,54 @@
         </div>
       </div>
 
+      <!-- Create Client section -->
+      <div id="section-create" style="display:none;">
+        <div class="section-header">
+          <span class="section-title">Create Client Account</span>
+        </div>
+        <div class="create-client-wrap">
+          <div class="form-card">
+            <div class="form-card-title">New MC Development Client</div>
+            <div class="form-card-desc">Create a dashboard account for a client who has purchased a website bundle. They can log in immediately with the credentials you set below.</div>
+            <div class="create-msg" id="create-msg"></div>
+            <form id="createClientForm" autocomplete="off">
+              <div class="form-field">
+                <label>Business Name</label>
+                <input class="form-input" type="text" id="create-business" placeholder="e.g. Jane's Hair Studio" autocomplete="off" required>
+              </div>
+              <div class="form-row">
+                <div class="form-field">
+                  <label>Email Address</label>
+                  <input class="form-input" type="email" id="create-email" placeholder="client@example.com" autocomplete="off" required>
+                </div>
+                <div class="form-field">
+                  <label>Platform Fee %</label>
+                  <input class="form-input" type="number" id="create-fee" min="0" max="100" step="0.01" value="0.10">
+                </div>
+              </div>
+              <div class="form-field">
+                <label>Temporary Password</label>
+                <input class="form-input" type="password" id="create-password" placeholder="Min. 8 characters" minlength="8" autocomplete="new-password" required>
+              </div>
+              <div class="form-field">
+                <label>Business Type</label>
+                <div class="bmode-grid">
+                  <div class="bmode-card selected" data-bmode="service">
+                    <div class="bmode-icon">&#9999;&#65039;</div>
+                    <div class="bmode-name">Service</div>
+                  </div>
+                  <div class="bmode-card" data-bmode="restaurant">
+                    <div class="bmode-icon">&#127869;&#65039;</div>
+                    <div class="bmode-name">Restaurant</div>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn-create" id="btn-create-submit">Create Account</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
@@ -732,6 +918,7 @@
     const ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVkZ25xYXd0dmp5anV5dXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjI1NDQsImV4cCI6MjA5MTA5ODU0NH0.MkIJL-GmeAzUsyinykQWa0-4mjAWTf-WEuZelLouDYg'
     const STATS_URL    = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/admin-stats'
     const UPDATE_URL   = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/admin-update-client'
+    const CREATE_URL   = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/admin-create-client'
 
     const aud = (n) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(n)
     const dt  = (s) => s ? new Date(s).toLocaleDateString('en-AU') : '—'
@@ -764,13 +951,47 @@
     document.getElementById('hamburger').addEventListener('click', openSidebar)
     overlay.addEventListener('click', closeSidebar)
 
-    // ── Nav items (all point to same page for now) ──────────────────────────
-    ;['nav-overview','nav-clients','nav-earnings'].forEach(id => {
-      document.getElementById(id)?.addEventListener('click', () => {
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
-        document.getElementById(id).classList.add('active')
-        closeSidebar()
+    // ── Nav section switching ──────────────────────────────────────────────
+    const titleMap = {
+      'nav-overview':      'Overview',
+      'nav-clients':       'Clients',
+      'nav-create-client': 'Create Client',
+    }
+    // Track which data state is currently active ('loading'|'data'|'error')
+    let currentDataState = 'loading'
+
+    function showSection(section) {
+      ;['state-loading','state-error','state-data','section-create'].forEach(id => {
+        const el = document.getElementById(id)
+        if (el) el.style.display = 'none'
       })
+      if (section === 'create') {
+        document.getElementById('section-create').style.display = ''
+      } else {
+        // Restore whichever data state was last shown
+        const stateId = { loading: 'state-loading', data: 'state-data', error: 'state-error' }[currentDataState] || 'state-loading'
+        document.getElementById(stateId).style.display = ''
+      }
+    }
+
+    function activateNav(id) {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+      document.getElementById(id)?.classList.add('active')
+      document.getElementById('page-title').textContent = titleMap[id] || 'Admin'
+      closeSidebar()
+    }
+
+    document.getElementById('nav-overview')?.addEventListener('click', () => {
+      activateNav('nav-overview')
+      showSection('overview')
+    })
+    document.getElementById('nav-clients')?.addEventListener('click', () => {
+      activateNav('nav-clients')
+      showSection('overview')
+    })
+    document.getElementById('nav-create-client')?.addEventListener('click', () => {
+      activateNav('nav-create-client')
+      showSection('create')
     })
 
     // ── Toast ─────────────────────────────────────────────────────────────────
@@ -785,9 +1006,12 @@
 
     // ── State helpers ─────────────────────────────────────────────────────────
     function showState(name) {
-      document.getElementById('state-loading').style.display = name === 'loading' ? '' : 'none'
-      document.getElementById('state-error').style.display   = name === 'error'   ? '' : 'none'
-      document.getElementById('state-data').style.display    = name === 'data'    ? '' : 'none'
+      currentDataState = name
+      // Hide the create section, show the requested data state
+      document.getElementById('section-create').style.display = 'none'
+      document.getElementById('state-loading').style.display  = name === 'loading' ? '' : 'none'
+      document.getElementById('state-error').style.display    = name === 'error'   ? '' : 'none'
+      document.getElementById('state-data').style.display     = name === 'data'    ? '' : 'none'
     }
 
     // ── Load data ─────────────────────────────────────────────────────────────
@@ -832,6 +1056,7 @@
 
     function renderTable(clients) {
       const tbody = document.getElementById('clients-tbody')
+      expandedId = null  // reset on every re-render to avoid stale state
       if (!clients.length) {
         tbody.innerHTML = `<tr class="empty-row"><td colspan="9">No clients found.</td></tr>`
         return
@@ -909,9 +1134,19 @@
       tbody.querySelectorAll('[data-styling]').forEach(chk => {
         chk.addEventListener('change', () => saveCustomStyling(chk.dataset.styling, chk.checked, chk))
       })
+      // Events: widget theme save / reset
+      tbody.querySelectorAll('[data-theme-save]').forEach(btn => {
+        btn.addEventListener('click', () => saveWidgetTheme(btn.dataset.themeSave, btn))
+      })
+      tbody.querySelectorAll('[data-theme-reset]').forEach(btn => {
+        btn.addEventListener('click', () => resetWidgetTheme(btn.dataset.themeReset, btn))
+      })
     }
 
     function buildExpansion(client) {
+      const wt = client.widget_theme || {}
+      const D  = { bg:'#0a0a0f', surface:'#111118', accent:'#4ade80', text:'#ffffff', sub:'#8b8b9e' }
+
       const bookingsHtml = client.recentBookings?.length
         ? `
           <div class="expansion-label">Recent Bookings (last 5)</div>
@@ -939,14 +1174,50 @@
             <div class="expansion-label">Widget Settings</div>
             <div class="setting-row">
               <div>
-                <div class="setting-label">Custom Styling</div>
-                <div class="setting-desc">Widget adapts to the client's website colours and font. When off, the widget uses the MCBook dark theme.</div>
+                <div class="setting-label">Auto-detect Host Styles</div>
+                <div class="setting-desc">Widget reads the client's site colours automatically. Overridden by a manual theme below.</div>
               </div>
               <label class="toggle" title="Toggle custom styling">
                 <input type="checkbox" class="toggle-input" data-styling="${escAttr(client.id)}"
                   ${client.widget_custom_styling ? 'checked' : ''}>
                 <span class="toggle-slider"></span>
               </label>
+            </div>
+
+            <div class="theme-section">
+              <div class="theme-section-title">Manual Widget Theme</div>
+              <div class="theme-section-desc">Override every colour, font and corner radius. Takes priority over auto-detect.</div>
+
+              <div class="theme-swatches">
+                ${[['bg','Background',D.bg],['surface','Cards',D.surface],['accent','Accent',D.accent],['text','Text',D.text],['sub','Subtext',D.sub]].map(([k,l,def])=>`
+                  <div class="theme-swatch">
+                    <input type="color" id="tc-${k}-${escAttr(client.id)}" value="${wt[k]||def}">
+                    <label>${l}</label>
+                  </div>`).join('')}
+              </div>
+
+              <div class="theme-font-row">
+                <label>Font</label>
+                <select id="tc-font-${escAttr(client.id)}">
+                  <option value="Inter" ${(wt.font||'Inter')==='Inter'?'selected':''}>Inter (default)</option>
+                  <option value="system-ui" ${wt.font==='system-ui'?'selected':''}>System UI</option>
+                  <option value="Georgia" ${wt.font==='Georgia'?'selected':''}>Georgia (Serif)</option>
+                  <option value="'Playfair Display'" ${wt.font==="'Playfair Display'"?'selected':''}>Playfair Display</option>
+                  <option value="'DM Sans'" ${wt.font==="'DM Sans'"?'selected':''}>DM Sans</option>
+                </select>
+              </div>
+
+              <div class="theme-radius-row">
+                <label>Corner radius</label>
+                <input type="range" id="tc-radius-${escAttr(client.id)}" min="0" max="24" value="${wt.radius||12}"
+                  oninput="document.getElementById('tc-radius-val-${escAttr(client.id)}').textContent=this.value+'px'">
+                <span class="theme-radius-val" id="tc-radius-val-${escAttr(client.id)}">${wt.radius||12}px</span>
+              </div>
+
+              <div class="theme-actions">
+                <button class="btn-sm btn-save" data-theme-save="${escAttr(client.id)}">Apply Theme</button>
+                <button class="btn-sm btn-cancel" data-theme-reset="${escAttr(client.id)}">Reset to Default</button>
+              </div>
             </div>
           </div>
           ${bookingsHtml}
@@ -1065,6 +1336,70 @@
       }
     }
 
+    // ── Widget theme ─────────────────────────────────────────────────────────
+    async function saveWidgetTheme(id, btn) {
+      const v = (key) => document.getElementById(`tc-${key}-${id}`)?.value
+      const theme = {
+        bg:      v('bg'),
+        surface: v('surface'),
+        accent:  v('accent'),
+        text:    v('text'),
+        sub:     v('sub'),
+        font:    document.getElementById(`tc-font-${id}`)?.value || 'Inter',
+        radius:  parseInt(document.getElementById(`tc-radius-${id}`)?.value || '12', 10),
+      }
+      const orig = btn.textContent; btn.textContent = 'Saving…'; btn.disabled = true
+      try {
+        const res = await fetch(UPDATE_URL, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}`, apikey: ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id: id, widget_theme: theme }),
+        })
+        const data = await res.json()
+        if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`)
+        const client = allClients.find(c => c.id === id)
+        if (client) client.widget_theme = theme
+        showToast('Widget theme saved')
+      } catch (err) {
+        showToast('Save failed: ' + err.message)
+      } finally {
+        btn.textContent = orig; btn.disabled = false
+      }
+    }
+
+    async function resetWidgetTheme(id, btn) {
+      const orig = btn.textContent; btn.textContent = 'Resetting…'; btn.disabled = true
+      try {
+        const res = await fetch(UPDATE_URL, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}`, apikey: ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id: id, widget_theme: null }),
+        })
+        const data = await res.json()
+        if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`)
+        const client = allClients.find(c => c.id === id)
+        if (client) client.widget_theme = null
+
+        // Reset color pickers and controls to defaults
+        const D = { bg:'#0a0a0f', surface:'#111118', accent:'#4ade80', text:'#ffffff', sub:'#8b8b9e' }
+        for (const [k, def] of Object.entries(D)) {
+          const el = document.getElementById(`tc-${k}-${id}`)
+          if (el) el.value = def
+        }
+        const fontEl   = document.getElementById(`tc-font-${id}`)
+        const radiusEl = document.getElementById(`tc-radius-${id}`)
+        const radValEl = document.getElementById(`tc-radius-val-${id}`)
+        if (fontEl)   fontEl.value = 'Inter'
+        if (radiusEl) { radiusEl.value = '12'; if (radValEl) radValEl.textContent = '12px' }
+
+        showToast('Theme reset to default')
+      } catch (err) {
+        showToast('Reset failed: ' + err.message)
+      } finally {
+        btn.textContent = orig; btn.disabled = false
+      }
+    }
+
     // ── Row expansion ─────────────────────────────────────────────────────────
     function toggleExpansion(id, btn) {
       const expandRow = document.getElementById(`expand-${id}`)
@@ -1110,6 +1445,93 @@
     function escAttr(str) {
       return String(str ?? '').replace(/"/g, '&quot;')
     }
+
+    // ── Create Client ─────────────────────────────────────────────────────────
+    let selectedBmode = 'service'
+    document.querySelectorAll('.bmode-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.bmode-card').forEach(c => c.classList.remove('selected'))
+        card.classList.add('selected')
+        selectedBmode = card.dataset.bmode
+      })
+    })
+
+    document.getElementById('createClientForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const msg  = document.getElementById('create-msg')
+      const btn  = document.getElementById('btn-create-submit')
+      const businessName = document.getElementById('create-business').value.trim()
+      const email        = document.getElementById('create-email').value.trim()
+      const password     = document.getElementById('create-password').value
+      const feeVal       = parseFloat(document.getElementById('create-fee').value)
+
+      msg.className = 'create-msg'
+
+      if (!businessName) {
+        msg.textContent = 'Business name is required.'
+        msg.classList.add('error')
+        return
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        msg.textContent = 'A valid email address is required.'
+        msg.classList.add('error')
+        return
+      }
+      if (!password || password.length < 8) {
+        msg.textContent = 'Password must be at least 8 characters.'
+        msg.classList.add('error')
+        return
+      }
+      if (isNaN(feeVal) || feeVal < 0 || feeVal > 100) {
+        msg.textContent = 'Platform fee must be between 0 and 100.'
+        msg.classList.add('error')
+        return
+      }
+
+      btn.disabled = true
+      btn.textContent = 'Creating…'
+
+      try {
+        const res = await fetch(CREATE_URL, {
+          method: 'POST',
+          headers: {
+            Authorization:  `Bearer ${session.access_token}`,
+            apikey:         ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            business_name:        businessName,
+            business_mode:        selectedBmode,
+            platform_fee_percent: feeVal,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`)
+
+        msg.textContent = `✓ Account created for ${email}. They can log in immediately.`
+        msg.classList.add('success')
+        document.getElementById('createClientForm').reset()
+        document.getElementById('create-fee').value = '0.10'
+        // Reset business type selector
+        document.querySelectorAll('.bmode-card').forEach(c => c.classList.remove('selected'))
+        document.querySelector('.bmode-card[data-bmode="service"]')?.classList.add('selected')
+        selectedBmode = 'service'
+        showToast(`Account created for ${email}`)
+        // Navigate to Clients view and reload data
+        setTimeout(() => {
+          activateNav('nav-clients')
+          loadData()
+        }, 1400)
+      } catch (err) {
+        msg.textContent = err.message || 'Failed to create account.'
+        msg.classList.add('error')
+      } finally {
+        btn.disabled    = false
+        btn.textContent = 'Create Account'
+      }
+    })
 
     // ── Boot ──────────────────────────────────────────────────────────────────
     loadData()

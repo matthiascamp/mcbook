@@ -178,7 +178,9 @@
   }
 
   // ─── Live slot generation ─────────────────────────────────────────────────
-  async function getAvailableSlots(businessId, dateObj, serviceDurationMins) {
+  async function getAvailableSlots(businessId, dateObj, serviceDurationMins, partySize, totalCapacity, businessMode) {
+    partySize    = partySize    || 1;
+    businessMode = businessMode || 'service';
     const dateISO   = dateObj.toISOString().slice(0, 10);
     const dayOfWeek = dateObj.getDay();
 
@@ -214,13 +216,23 @@
     const slotMins       = settings ? settings.slot_duration_mins : 30;
     const minNoticeHours = settings ? settings.min_notice_hours   : 2;
 
-    // d. Already-booked times for this date
+    // d. Already-booked times / capacity for this date
     const { data: booked } = await sb.from('bookings')
-      .select('time')
+      .select('time, party_size')
       .eq('client_id', businessId)
       .eq('date', dateISO)
       .neq('status', 'cancelled');
-    const bookedSet = new Set((booked || []).map(b => b.time.slice(0, 5)));
+    let bookedSet = null;
+    let bookedCoversByTime = null;
+    if (businessMode === 'restaurant' && totalCapacity) {
+      bookedCoversByTime = {};
+      for (const b of booked || []) {
+        const t = b.time.slice(0, 5);
+        bookedCoversByTime[t] = (bookedCoversByTime[t] || 0) + (b.party_size || 1);
+      }
+    } else {
+      bookedSet = new Set((booked || []).map(b => b.time.slice(0, 5)));
+    }
 
     // e. Blocked date check
     const { data: blocked } = await sb.from('blocked_dates')
@@ -268,7 +280,10 @@
 
       if (slotTime - now >= noticeMs) {
         const hhMM = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-        if (!bookedSet.has(hhMM)) {
+        const isFull = (businessMode === 'restaurant' && totalCapacity)
+          ? (bookedCoversByTime[hhMM] || 0) + partySize > totalCapacity
+          : bookedSet.has(hhMM);
+        if (!isFull) {
           const ampm    = h >= 12 ? 'PM' : 'AM';
           const display = `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
           slots.push(display);
@@ -392,6 +407,11 @@
   // Switches between McBook dark palette (dark host pages) and
   // a clean sage-green light palette (light host pages).
   function buildCSS(theme) {
+    // If a fully-built palette is passed directly, use it as-is
+    if (theme && theme._palette) {
+      const t = theme._palette;
+      return buildCSSTemplate(t);
+    }
     const dark = isDark(theme.bg);
 
     // Build a normalised theme object for either mode
@@ -419,6 +439,10 @@
       glow:     '0 0 12px rgba(22,163,74,0.12)',
     };
 
+    return buildCSSTemplate(t);
+  }
+
+  function buildCSSTemplate(t) {
     return `
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -516,6 +540,26 @@
       .bw-service-name { font-size: 0.875rem; font-weight: 600; color: ${t.text}; }
       .bw-service-meta { font-size: 0.75rem; color: ${t.sub}; margin-top: 2px; }
       .bw-service-price { font-size: 0.9rem; font-weight: 700; color: ${t.accent}; }
+
+      /* ── Party size stepper ── */
+      .bw-party-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px 2px; margin-top: 4px;
+        border-top: 1px solid ${t.border};
+      }
+      .bw-party-label { font-size: 0.875rem; font-weight: 600; color: ${t.text}; }
+      .bw-party-stepper { display: flex; align-items: center; gap: 14px; }
+      .bw-party-btn {
+        width: 30px; height: 30px;
+        border: 1px solid ${t.border}; border-radius: 8px;
+        background: ${t.surface}; color: ${t.text};
+        font-size: 1.1rem; line-height: 1; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: border-color 0.2s ease, background 0.2s ease;
+        padding: 0; font-family: inherit;
+      }
+      .bw-party-btn:hover { border-color: ${t.accent}; background: ${t.accentBg}; }
+      .bw-party-count { font-size: 1rem; font-weight: 700; color: ${t.text}; min-width: 22px; text-align: center; }
 
       /* ── Calendar ── */
       .bw-cal-header {
@@ -646,6 +690,11 @@
       .bw-field input::placeholder { color: ${t.sub}; }
 
       /* ── Stripe placeholder ── */
+      ::slotted(*) {
+        background: #ffffff !important;
+        color-scheme: light !important;
+        color: #0a0a0f !important;
+      }
       .bw-stripe-box {
         border: 1px solid ${t.border};
         border-radius: 8px;
@@ -658,6 +707,7 @@
         align-items: center;
         gap: 8px;
         outline: none;
+        overflow: hidden;
       }
       .bw-stripe-box.focused {
         border-color: ${t.accent};
@@ -864,12 +914,18 @@
       scriptEl.parentNode.insertBefore(host, scriptEl.nextSibling);
 
       const shadow = host.attachShadow({ mode: 'open' });
+      this._shadow = shadow;
 
       // Styles
       const styleEl = document.createElement('style');
       styleEl.textContent = buildCSS(this.theme);
       shadow.appendChild(styleEl);
       this._styleEl = styleEl;
+
+      // Custom CSS override slot (populated by _loadClientSettings)
+      const customStyleEl = document.createElement('style');
+      shadow.appendChild(customStyleEl);
+      this._customStyleEl = customStyleEl;
 
       // Root wrapper
       this.root = document.createElement('div');
@@ -883,16 +939,38 @@
       this._loadClientSettings();
     }
 
-    // ── Load widget_custom_styling from DB, update theme if enabled ───────────
+    // ── Load theme settings from DB ───────────────────────────────────────────
     async _loadClientSettings() {
       try {
         await sbReady;
         const { data } = await sb
           .from('clients')
-          .select('widget_custom_styling')
+          .select('widget_custom_styling, widget_theme, widget_css')
           .eq('id', this.businessId)
           .single();
-        if (data?.widget_custom_styling) {
+
+        // Inject raw CSS overrides (highest priority — always applied on top)
+        if (data?.widget_css) {
+          this._customStyleEl.textContent = data.widget_css;
+          this._render();
+        }
+
+        if (data?.widget_theme) {
+          // Admin-configured custom palette — merge with dark/light defaults
+          const wt   = data.widget_theme;
+          const dark = isDark(wt.bg || '#0a0a0f');
+          const base = dark ? {
+            bg:'#0a0a0f', surface:'#111118', border:'#1e1e2e', accent:'#4ade80',
+            accentBg:'rgba(74,222,128,0.07)', text:'#ffffff', sub:'#8b8b9e',
+            btnText:'#0a0a0f', inputBg:'#0d0d15', glow:'0 0 12px rgba(74,222,128,0.15)',
+          } : {
+            bg:'#ffffff', surface:'#f4f7f4', border:'rgba(0,0,0,0.09)', accent:'#16a34a',
+            accentBg:'rgba(22,163,74,0.07)', text:'#0a0a0f', sub:'#64748b',
+            btnText:'#ffffff', inputBg:'#eef2ee', glow:'0 0 12px rgba(22,163,74,0.12)',
+          };
+          this._styleEl.textContent = buildCSS({ _palette: { ...base, ...wt } });
+          this._render();
+        } else if (data?.widget_custom_styling) {
           this.theme = detectHostStyles();
           this._styleEl.textContent = buildCSS(this.theme);
           this._render();
@@ -936,9 +1014,10 @@
 
       const stepNames = ['Select a Service','Choose a Date','Choose a Time',
         'Your Details', needsCard ? 'Payment' : 'Review & Confirm','Confirmation'];
+      const bookingTitle = (this._businessMode === 'restaurant') ? 'Book a Table' : 'Book an Appointment';
       return `
         <div class="bw-header">
-          <h2>Book an Appointment</h2>
+          <h2>${bookingTitle}</h2>
           <p>Step ${this.state.step} of 6 — ${stepNames[this.state.step - 1]}</p>
         </div>
         <div class="bw-progress">${bars}</div>
@@ -964,7 +1043,7 @@
         (async () => {
           await sbReady;
           const todayISO = new Date().toISOString().slice(0, 10);
-          const [{ data }, { data: rules }, { data: settings }, { data: ovData }] = await Promise.all([
+          const [{ data }, { data: rules }, { data: settings }, { data: ovData }, { data: clientData }, { data: seatAreas }] = await Promise.all([
             sb.from('services')
               .select('id, name, duration_mins, price, noshow_fee, payment_mode')
               .eq('client_id', this.businessId)
@@ -983,15 +1062,33 @@
               .select('date, is_available, start_time, end_time')
               .eq('client_id', this.businessId)
               .gte('date', todayISO),
+            sb.from('clients')
+              .select('business_mode')
+              .eq('id', this.businessId)
+              .limit(1)
+              .maybeSingle(),
+            sb.from('seating_areas')
+              .select('capacity')
+              .eq('client_id', this.businessId)
+              .eq('active', true),
           ]);
           this._services = data || [];
           this._enabledWeekdays = new Set((rules || []).map(r => r.day_of_week));
           this._availabilityRules = Object.fromEntries((rules || []).map(r => [r.day_of_week, r]));
           this._minNoticeHours = settings?.min_notice_hours ?? 2;
           this._slotMins = settings?.slot_duration_mins ?? 30;
+          const areaCapTotal = (seatAreas || []).reduce((s, a) => s + (a.capacity || 0), 0);
+          this._totalCapacity = areaCapTotal > 0 ? areaCapTotal : null;
           this._overrides = new Map((ovData || []).map(o => [o.date, o]));
           this._hasAvailability = this._enabledWeekdays.size > 0;
+          this._businessMode = clientData?.business_mode ?? 'service';
+          // Restaurants have one hidden service — skip service-selection step
+          if (this._businessMode === 'restaurant' && this._services.length >= 1 && this.state.step === 1) {
+            this.state.service = this._services[0];
+            this.state.step = 2;
+          }
           if (this.state.step === 1) this._render();
+          else if (this.state.step === 2) this._render();
         })();
         return `
           <div class="bw-step-title">What service do you need?</div>
@@ -1023,9 +1120,22 @@
           </div>`;
       }).join('');
 
+      const isRestaurant = (this._businessMode === 'restaurant');
+      const step1Title = isRestaurant ? 'Choose a session' : 'What service do you need?';
+      const partySizePicker = isRestaurant ? `
+        <div class="bw-party-row">
+          <span class="bw-party-label">Party size</span>
+          <div class="bw-party-stepper">
+            <button type="button" class="bw-party-btn" id="bw-party-dec">&#8722;</button>
+            <span class="bw-party-count" id="bw-party-count">${this.state.partySize || 1}</span>
+            <button type="button" class="bw-party-btn" id="bw-party-inc">&#43;</button>
+          </div>
+        </div>` : '';
+
       return `
-        <div class="bw-step-title">What service do you need?</div>
+        <div class="bw-step-title">${step1Title}</div>
         <div class="bw-services">${cards}</div>
+        ${partySizePicker}
         <div class="bw-btn-row">
           <button type="button" class="bw-btn bw-btn-primary" id="bw-next"
             ${!this.state.service ? 'disabled' : ''}>Next &rarr;</button>
@@ -1094,7 +1204,7 @@
       // If slots not yet loaded, show loading state and kick off fetch
       if (!this._slots) {
         (async () => {
-          this._slots = await getAvailableSlots(this.businessId, this.state.date, this.state.service?.duration_mins || 0);
+          this._slots = await getAvailableSlots(this.businessId, this.state.date, this.state.service?.duration_mins || 0, this.state.partySize || 1, this._totalCapacity, this._businessMode);
           if (this.state.step === 3) this._render();
         })();
         return `
@@ -1168,12 +1278,16 @@
         ? date.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})
         : '';
 
+      const partyRow = (this._businessMode === 'restaurant')
+        ? `<div class="bw-summary-row"><span class="bw-summary-label">Party size</span><span class="bw-summary-val">${this.state.partySize || 1} ${(this.state.partySize || 1) === 1 ? 'guest' : 'guests'}</span></div>`
+        : '';
       const summaryRows = `
         <div class="bw-summary">
           <div class="bw-summary-row">
             <span class="bw-summary-label">Service</span>
             <span class="bw-summary-val">${service ? service.name : ''}</span>
           </div>
+          ${partyRow}
           <div class="bw-summary-row">
             <span class="bw-summary-label">Date &amp; Time</span>
             <span class="bw-summary-val">${dateStr} at ${time}</span>
@@ -1314,6 +1428,22 @@
           this._render();
         });
       });
+      const decBtn = this.root.querySelector('#bw-party-dec');
+      const incBtn = this.root.querySelector('#bw-party-inc');
+      if (decBtn) decBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.state.partySize = Math.max(1, (this.state.partySize || 1) - 1);
+        this._slots = null;
+        const el = this.root.querySelector('#bw-party-count');
+        if (el) el.textContent = this.state.partySize;
+      });
+      if (incBtn) incBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.state.partySize = Math.min(20, (this.state.partySize || 1) + 1);
+        this._slots = null;
+        const el = this.root.querySelector('#bw-party-count');
+        if (el) el.textContent = this.state.partySize;
+      });
     }
 
     _bindStep2() {
@@ -1434,7 +1564,8 @@
             }
             const { data: booking, error: bookErr } = await sb.from('bookings')
               .insert({ client_id: this.businessId, customer_id: customerId,
-                        service_id: service.id, date: dateISO, time: timeHHMM, status: 'scheduled' })
+                        service_id: service.id, date: dateISO, time: timeHHMM, status: 'scheduled',
+                        party_size: this.state.partySize || 1 })
               .select('id').single();
             if (bookErr) throw bookErr;
             this.state.bookingId = booking.id;
@@ -1480,6 +1611,7 @@
               time:              timeHHMM,
               status:            'scheduled',
               payment_method_id: setupIntent.payment_method,
+              party_size:        this.state.partySize || 1,
             })
             .select('id').single();
           if (bookErr) throw bookErr;
@@ -1533,6 +1665,7 @@
         contact:   {},
         ref:       null,
         bookingId: null,
+        partySize: 1,
         calYear:   new Date().getFullYear(),
         calMonth:  new Date().getMonth(),
       };

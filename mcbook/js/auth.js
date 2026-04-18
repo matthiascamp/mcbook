@@ -4,16 +4,16 @@ export async function signIn(email, password) {
   return supabase.auth.signInWithPassword({ email, password })
 }
 
-export async function signUp(email, password, businessName) {
+export async function signUp(email, password, businessName, businessMode) {
   return supabase.auth.signUp({
     email,
     password,
-    options: { data: { business_name: businessName } }
+    options: { data: { business_name: businessName, business_mode: businessMode || 'service' } }
   })
 }
 
 // Creates the clients row on first login if it doesn't exist yet
-export async function ensureClientProfile(uid, businessName) {
+export async function ensureClientProfile(uid, businessName, businessMode) {
   const { data: existing, error: selectErr } = await supabase
     .from('clients')
     .select('id')
@@ -29,9 +29,18 @@ export async function ensureClientProfile(uid, businessName) {
     const { error: insertErr } = await supabase.from('clients').insert({
       id:            uid,
       business_name: businessName || 'My Business',
+      business_mode: businessMode || 'service',
     })
     if (insertErr) {
       console.error('[MCBook] clients insert failed:', insertErr.message)
+      return
+    }
+    // Seed a default bookable service so the widget works immediately
+    if (businessMode === 'restaurant') {
+      await supabase.from('services').insert({
+        client_id: uid, name: 'Table Booking', duration_mins: 60,
+        price: 0, noshow_fee: 0, payment_mode: 'free', active: true,
+      })
     }
   }
 }
