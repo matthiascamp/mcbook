@@ -945,9 +945,10 @@
         await sbReady;
         const { data } = await sb
           .from('clients')
-          .select('widget_custom_styling, widget_theme, widget_css')
+          .select('widget_custom_styling, widget_theme, widget_css, business_mode')
           .eq('id', this.businessId)
           .single();
+        if (data?.business_mode) this._businessMode = data.business_mode;
 
         // Inject raw CSS overrides (highest priority — always applied on top)
         if (data?.widget_css) {
