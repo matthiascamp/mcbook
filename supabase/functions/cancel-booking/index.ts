@@ -82,7 +82,7 @@ Deno.serve(async (req: Request) => {
 
       const status = (booking as any).status
       if (status === 'cancelled') return json({ error: 'already_cancelled' }, 422)
-      if (status !== 'scheduled' && status !== 'pending_payment') {
+      if (!['scheduled', 'confirmed', 'pending_payment'].includes(status)) {
         return json({ error: 'This booking cannot be cancelled online.' }, 422)
       }
 

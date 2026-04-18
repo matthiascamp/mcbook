@@ -170,7 +170,7 @@
         return
       }
 
-      if (data.status !== 'scheduled' && data.status !== 'pending_payment') {
+      if (!['scheduled', 'confirmed', 'pending_payment'].includes(data.status)) {
         title.textContent = 'Cannot cancel online'
         sub.textContent   = `This booking has status "${data.status}" and cannot be cancelled via this link. Please contact the business directly.`
         icon.className    = 'icon warning'

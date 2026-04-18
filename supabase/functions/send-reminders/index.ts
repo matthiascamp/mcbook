@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
     .from('bookings')
     .select('id, date, time, clients(business_name), customers(name, phone), services(name)')
     .eq('date', tomorrowISO)
-    .in('status', ['scheduled', 'pending_payment'])
+    .in('status', ['scheduled', 'confirmed', 'pending_payment'])
 
   if (error) {
     console.error('send-reminders DB error:', error)
