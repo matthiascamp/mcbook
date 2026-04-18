@@ -1012,13 +1012,17 @@
         return `<div class="bw-progress-step ${cls}"></div>`;
       }).join('');
 
-      const stepNames = ['Select a Service','Choose a Date','Choose a Time',
-        'Your Details', needsCard ? 'Payment' : 'Review & Confirm','Confirmation'];
-      const bookingTitle = (this._businessMode === 'restaurant') ? 'Book a Table' : 'Book an Appointment';
+      const isRest = this._businessMode === 'restaurant';
+      const stepNames = isRest
+        ? ['','Choose a Date','Choose a Time','Your Details', needsCard ? 'Card Details' : 'Review & Confirm','Confirmed']
+        : ['Select a Service','Choose a Date','Choose a Time','Your Details', needsCard ? 'Payment' : 'Review & Confirm','Confirmation'];
+      const bookingTitle = isRest ? 'Make a Reservation' : 'Book an Appointment';
+      const displayStep  = isRest ? this.state.step - 1 : this.state.step;
+      const totalSteps   = isRest ? 5 : 6;
       return `
         <div class="bw-header">
           <h2>${bookingTitle}</h2>
-          <p>Step ${this.state.step} of 6 — ${stepNames[this.state.step - 1]}</p>
+          <p>Step ${displayStep} of ${totalSteps} — ${stepNames[this.state.step - 1]}</p>
         </div>
         <div class="bw-progress">${bars}</div>
       `;
@@ -1104,7 +1108,7 @@
           <div class="bw-confirm" style="padding:24px 0 8px;">
             <div class="bw-confirm-icon" style="font-size:1.4rem;">&#128197;</div>
             <h3>No availability yet</h3>
-            <p>Online bookings aren't available right now.<br>Please get in touch directly to arrange an appointment.</p>
+            <p>Online bookings aren't available right now.<br>${this._businessMode === 'restaurant' ? 'Please get in touch directly to make a reservation.' : 'Please get in touch directly to arrange an appointment.'}</p>
           </div>`;
       }
 
@@ -1274,19 +1278,22 @@
     _step5() {
       const { service, date, time } = this.state;
       const mode    = service?.payment_mode || 'free';
+      const isRest  = this._businessMode === 'restaurant';
       const dateStr = date
         ? date.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})
         : '';
 
-      const partyRow = (this._businessMode === 'restaurant')
-        ? `<div class="bw-summary-row"><span class="bw-summary-label">Party size</span><span class="bw-summary-val">${this.state.partySize || 1} ${(this.state.partySize || 1) === 1 ? 'guest' : 'guests'}</span></div>`
+      const partyRow = isRest
+        ? `<div class="bw-summary-row"><span class="bw-summary-label">Guests</span><span class="bw-summary-val">${this.state.partySize || 1} ${(this.state.partySize || 1) === 1 ? 'guest' : 'guests'}</span></div>`
         : '';
-      const summaryRows = `
-        <div class="bw-summary">
+      const serviceRow = isRest ? '' : `
           <div class="bw-summary-row">
             <span class="bw-summary-label">Service</span>
             <span class="bw-summary-val">${service ? service.name : ''}</span>
-          </div>
+          </div>`;
+      const summaryRows = `
+        <div class="bw-summary">
+          ${serviceRow}
           ${partyRow}
           <div class="bw-summary-row">
             <span class="bw-summary-label">Date &amp; Time</span>
@@ -1298,24 +1305,28 @@
           </div>
         </div>`;
 
+      const confirmLabel = isRest ? 'Reserve' : 'Book';
+
       if (mode === 'free') {
         return `
           <div class="bw-step-title">Review &amp; Confirm</div>
           ${summaryRows}
-          <div style="font-size:0.77rem;opacity:0.65;margin-bottom:4px;">Payment is not collected online — please arrange payment directly with the business.</div>
+          <div style="font-size:0.77rem;opacity:0.65;margin-bottom:4px;">${isRest ? 'No payment required — please pay on the day.' : 'Payment is not collected online — please arrange payment directly with the business.'}</div>
           <div class="bw-error" id="bw-confirm-err"></div>
           <div class="bw-btn-row">
             <button type="button" class="bw-btn bw-btn-secondary" id="bw-back">&larr; Back</button>
-            <button type="button" class="bw-btn bw-btn-primary" id="bw-next">Book</button>
+            <button type="button" class="bw-btn bw-btn-primary" id="bw-next">${confirmLabel}</button>
           </div>`;
       }
 
       // Card-required modes (noshow_only, after)
-      const chargeRow = `<div class="bw-summary-row"><span class="bw-summary-label">Due after appointment</span><span class="bw-summary-val">$${service.price}</span></div>`;
+      const chargeRow = isRest
+        ? ''
+        : `<div class="bw-summary-row"><span class="bw-summary-label">Due after visit</span><span class="bw-summary-val">$${service.price}</span></div>`;
 
-      const modeNote = 'Your card will be saved and charged after your appointment.';
-
-      const confirmLabel = 'Book';
+      const modeNote = isRest
+        ? 'We require a card to hold your reservation. You won\'t be charged now — your card is only used if you cancel late or don\'t show up.'
+        : 'Your card will be saved and charged after your appointment.';
 
       return `
         <div class="bw-step-title">Review &amp; Card Details</div>
@@ -1351,33 +1362,34 @@
     // Step 6 — Confirmation
     _step6() {
       const { service, date, time, contact, ref } = this.state;
+      const isRest  = this._businessMode === 'restaurant';
       const dateStr = date
         ? date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
         : '';
+      const partyRow = isRest
+        ? `<div class="bw-summary-row"><span class="bw-summary-label">Guests</span><span class="bw-summary-val">${this.state.partySize || 1}</span></div>`
+        : `<div class="bw-summary-row"><span class="bw-summary-label">Service</span><span class="bw-summary-val">${service ? service.name : ''}</span></div>`;
 
       return `
         <div class="bw-confirm">
           <div class="bw-confirm-icon">&#10003;</div>
-          <h3>You're all booked, ${contact.name ? contact.name.split(' ')[0] : 'there'}!</h3>
+          <h3>${isRest ? `Reservation confirmed, ${contact.name ? contact.name.split(' ')[0] : 'there'}!` : `You're all booked, ${contact.name ? contact.name.split(' ')[0] : 'there'}!`}</h3>
           <p>
             ${contact.phone ? `A text message confirmation has been sent to <strong>${contact.phone}</strong>.` : 'You will receive a text message confirmation shortly.'}<br>
-            We look forward to seeing you.
+            We look forward to ${isRest ? 'welcoming you' : 'seeing you'}.
           </p>
           <div class="bw-summary" style="text-align:left;margin-top:20px;">
-            <div class="bw-summary-row">
-              <span class="bw-summary-label">Service</span>
-              <span class="bw-summary-val">${service ? service.name : ''}</span>
-            </div>
+            ${partyRow}
             <div class="bw-summary-row">
               <span class="bw-summary-label">Date &amp; Time</span>
               <span class="bw-summary-val">${dateStr} at ${time}</span>
             </div>
           </div>
-          <div class="bw-confirm-ref">Booking ref: ${ref}</div>
+          <div class="bw-confirm-ref">${isRest ? 'Reservation' : 'Booking'} ref: ${ref}</div>
         </div>
         <div class="bw-btn-row">
-          <button class="bw-btn bw-btn-secondary" id="bw-new-booking">Book Another</button>
-          <button class="bw-btn bw-btn-secondary" id="bw-cancel-booking" style="color:#ef4444;border-color:rgba(239,68,68,0.3);">Cancel Booking</button>
+          <button class="bw-btn bw-btn-secondary" id="bw-new-booking">${isRest ? 'New Reservation' : 'Book Another'}</button>
+          <button class="bw-btn bw-btn-secondary" id="bw-cancel-booking" style="color:#ef4444;border-color:rgba(239,68,68,0.3);">${isRest ? 'Cancel Reservation' : 'Cancel Booking'}</button>
         </div>`;
     }
 
