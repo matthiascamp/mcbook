@@ -596,10 +596,12 @@
                   <div class="slot-label">Slot duration</div>
                   <div class="slot-sub">Minimum interval between bookings</div>
                 </div>
-                <select class="time-select">
-                  <option>15 minutes</option>
-                  <option selected>30 minutes</option>
-                  <option>60 minutes</option>
+                <select class="time-select" id="slot-duration-sel">
+                  <option value="30">Half hour</option>
+                  <option value="60" selected>1 hour</option>
+                  <option value="90">1.5 hours</option>
+                  <option value="120">2 hours</option>
+                  <option value="150">2.5 hours</option>
                 </select>
               </div>
               <div class="slot-row">

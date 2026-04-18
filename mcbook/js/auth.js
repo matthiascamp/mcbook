@@ -37,8 +37,9 @@ export async function ensureClientProfile(uid, businessName, businessMode) {
     }
     // Seed a default bookable service so the widget works immediately
     if (businessMode === 'restaurant') {
+      const { data: bs } = await supabase.from('booking_settings').select('slot_duration_mins').eq('client_id', uid).maybeSingle()
       await supabase.from('services').insert({
-        client_id: uid, name: 'Table Booking', duration_mins: 60,
+        client_id: uid, name: 'Table Booking', duration_mins: bs?.slot_duration_mins ?? 60,
         price: 0, noshow_fee: 0, payment_mode: 'free', active: true,
       })
     }

@@ -10,10 +10,16 @@ export function setTopbarDate() {
 }
 
 export async function loadSidebarUser(uid) {
-  const { data } = await supabase.from('clients').select('business_name').eq('id', uid).maybeSingle()
+  const { data } = await supabase.from('clients').select('business_name, business_mode').eq('id', uid).maybeSingle()
   if (!data) return
   const name = data.business_name || ''
   const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'
   document.querySelectorAll('.sidebar-user-name').forEach(el => el.textContent = name)
   document.querySelectorAll('.sidebar-avatar').forEach(el => el.textContent = initials)
+  if (data.business_mode === 'restaurant') {
+    document.querySelectorAll('a[href="services.html"]').forEach(el => {
+      el.querySelector('.nav-icon').textContent = '🍽️'
+      el.childNodes[el.childNodes.length - 1].textContent = ' Seating'
+    })
+  }
 }

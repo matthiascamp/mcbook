@@ -121,7 +121,7 @@ async function loadBookingSettings() {
   const noticeSel  = slotRows[2]?.querySelector('select')
   const payToggle  = document.getElementById('toggle-require-payment')
 
-  if (slotSel)    slotSel.value    = `${data.slot_duration_mins} minutes`
+  if (slotSel)    slotSel.value    = `${data.slot_duration_mins}`
   if (advanceSel) advanceSel.value = `${data.advance_window_weeks} weeks`
   if (noticeSel)  noticeSel.value  = data.min_notice_hours === 1
     ? '1 hour' : `${data.min_notice_hours} hours`
@@ -390,15 +390,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const advanceSel = slotRows[1]?.querySelector('select')
     const noticeSel  = slotRows[2]?.querySelector('select')
     const payToggle  = document.getElementById('toggle-require-payment')
+    const slotMins   = parseInt(slotSel?.value || '60')
     const { error } = await supabase.from('booking_settings').upsert({
       client_id:            uid,
-      slot_duration_mins:   parseInt(slotSel?.value   || '30'),
+      slot_duration_mins:   slotMins,
       advance_window_weeks: parseInt(advanceSel?.value || '4'),
       min_notice_hours:     parseInt(noticeSel?.value  || '2'),
       require_payment:      payToggle ? (payToggle.checked && !payToggle.disabled) : false,
     }, { onConflict: 'client_id' })
-    if (!error) alert('Settings saved.')
-    else console.error(error)
+    if (error) { console.error(error); return }
+    // For restaurants, keep the Table Booking service duration in sync
+    const { data: clientData } = await supabase.from('clients').select('business_mode').eq('id', uid).maybeSingle()
+    if (clientData?.business_mode === 'restaurant') {
+      await supabase.from('services').update({ duration_mins: slotMins }).eq('client_id', uid).eq('active', true)
+    }
+    alert('Settings saved.')
   })
 
   // Remove blocked date (delegated — outside loadBlockedDates so no duplicate listeners)
