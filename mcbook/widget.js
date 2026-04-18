@@ -1311,7 +1311,7 @@
         return `
           <div class="bw-step-title">Review &amp; Confirm</div>
           ${summaryRows}
-          <div style="font-size:0.77rem;opacity:0.65;margin-bottom:4px;">${isRest ? 'No payment required — please pay on the day.' : 'Payment is not collected online — please arrange payment directly with the business.'}</div>
+          ${isRest ? '' : '<div style="font-size:0.77rem;opacity:0.65;margin-bottom:4px;">Payment is not collected online — please arrange payment directly with the business.</div>'}
           <div class="bw-error" id="bw-confirm-err"></div>
           <div class="bw-btn-row">
             <button type="button" class="bw-btn bw-btn-secondary" id="bw-back">&larr; Back</button>
