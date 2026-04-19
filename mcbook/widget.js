@@ -188,7 +188,7 @@
 
     // a. Check override for this specific date
     const { data: override } = await sb.from('availability_overrides')
-      .select('is_available, start_time, end_time')
+      .select('is_available, start_time, end_time, blocked_from, blocked_to')
       .eq('client_id', businessId)
       .eq('date', dateISO)
       .limit(1)
@@ -209,12 +209,21 @@
 
     // c. Booking settings (slot size, min notice)
     const { data: settings } = await sb.from('booking_settings')
-      .select('slot_duration_mins, min_notice_hours')
+      .select('slot_duration_mins, min_notice_hours, advance_window_weeks')
       .eq('client_id', businessId)
       .limit(1)
       .maybeSingle();
     const slotMins       = settings ? settings.slot_duration_mins : 30;
     const minNoticeHours = settings ? settings.min_notice_hours   : 2;
+
+    // Enforce advance booking window
+    const advanceWeeks = settings?.advance_window_weeks ?? 4;
+    if (advanceWeeks > 0) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const maxDate = new Date(today);
+      maxDate.setDate(maxDate.getDate() + advanceWeeks * 7);
+      if (dateObj > maxDate) return [];
+    }
 
     // d. Already-booked times / capacity for this date
     const { data: booked } = await sb.from('bookings')
@@ -366,10 +375,17 @@
     return new Date(year, month, 1).getDay();
   }
 
-  function isDateAvailable(date, enabledWeekdays, availabilityRules, minNoticeHours, slotMins, overrides) {
+  function isDateAvailable(date, enabledWeekdays, availabilityRules, minNoticeHours, slotMins, overrides, advanceWindowWeeks) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (date < today) return false;
+
+    // Enforce advance booking window
+    if (advanceWindowWeeks > 0) {
+      const maxDate = new Date(today);
+      maxDate.setDate(maxDate.getDate() + advanceWindowWeeks * 7);
+      if (date > maxDate) return false;
+    }
 
     const dateStr = date.toISOString().slice(0, 10);
     const ov = overrides?.get(dateStr);
@@ -1063,7 +1079,7 @@
               .eq('client_id', this.businessId)
               .eq('enabled', true),
             sb.from('booking_settings')
-              .select('slot_duration_mins, min_notice_hours')
+              .select('slot_duration_mins, min_notice_hours, advance_window_weeks')
               .eq('client_id', this.businessId)
               .limit(1)
               .maybeSingle(),
@@ -1086,6 +1102,7 @@
           this._availabilityRules = Object.fromEntries((rules || []).map(r => [r.day_of_week, r]));
           this._minNoticeHours = settings?.min_notice_hours ?? 2;
           this._slotMins = settings?.slot_duration_mins ?? 30;
+          this._advanceWindowWeeks = settings?.advance_window_weeks ?? 4;
           const areaCapTotal = (seatAreas || []).reduce((s, a) => s + (a.capacity || 0), 0);
           this._totalCapacity = areaCapTotal > 0 ? areaCapTotal : null;
           this._overrides = new Map((ovData || []).map(o => [o.date, o]));
@@ -1178,7 +1195,7 @@
 
       for (let d = 1; d <= totalDays; d++) {
         const thisDate = new Date(calYear, calMonth, d);
-        const avail    = isDateAvailable(thisDate, this._enabledWeekdays, this._availabilityRules, this._minNoticeHours, this._slotMins, this._overrides);
+        const avail    = isDateAvailable(thisDate, this._enabledWeekdays, this._availabilityRules, this._minNoticeHours, this._slotMins, this._overrides, this._advanceWindowWeeks);
         const isToday  = thisDate.getTime() === today.getTime();
         const isSel    = selDate && selDate.getTime() === thisDate.getTime();
 
@@ -1507,6 +1524,15 @@
         let { calYear, calMonth } = this.state;
         calMonth++;
         if (calMonth > 11) { calMonth = 0; calYear++; }
+        // Don't navigate past the advance booking window
+        const advWeeks = this._advanceWindowWeeks ?? 4;
+        if (advWeeks > 0) {
+          const maxDate = new Date();
+          maxDate.setDate(maxDate.getDate() + advWeeks * 7);
+          const maxMonth = maxDate.getMonth();
+          const maxYear  = maxDate.getFullYear();
+          if (calYear > maxYear || (calYear === maxYear && calMonth > maxMonth)) return;
+        }
         this.state.calYear  = calYear;
         this.state.calMonth = calMonth;
         this._render();
