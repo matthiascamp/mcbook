@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { getSession } from '../auth.js'
-import { setTopbarDate, loadSidebarUser } from '../ui.js'
+import { setTopbarDate, loadSidebarUser, esc } from '../ui.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function todayISO() { return new Date().toISOString().slice(0, 10) }
@@ -124,10 +124,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       el.dataset.bookingId = b.id
       el.innerHTML = `
         <span class="booking-time">${fmtTime(b.time)}</span>
-        <div class="booking-avatar">${initials(name)}</div>
+        <div class="booking-avatar">${esc(initials(name))}</div>
         <div class="booking-info">
-          <div class="booking-name">${name}</div>
-          <div class="booking-service">${b.services?.name ?? ''} · ${b.services?.duration_mins ?? ''} min</div>
+          <div class="booking-name">${esc(name)}</div>
+          <div class="booking-service">${esc(b.services?.name ?? '')} · ${Number(b.services?.duration_mins ?? 0)} min</div>
         </div>
         <span class="status-pill ${b.status}">${statusLabel(b.status)}</span>
       `
@@ -164,8 +164,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span class="mon">${MONTHS[d.getMonth()]}</span>
           </div>
           <div class="upcoming-info">
-            <div class="upcoming-name">${b.customers?.name ?? ''}</div>
-            <div class="upcoming-meta">${b.services?.name ?? ''} · ${fmtTime(b.time)}</div>
+            <div class="upcoming-name">${esc(b.customers?.name ?? '')}</div>
+            <div class="upcoming-meta">${esc(b.services?.name ?? '')} · ${fmtTime(b.time)}</div>
           </div>
           <span class="status-pill ${b.status}">${statusLabel(b.status)}</span>
         `
@@ -231,10 +231,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           el.dataset.bookingId = b.id
           el.innerHTML = `
             <span class="booking-time">${fmtTime(b.time)}</span>
-            <div class="booking-avatar">${initials(name)}</div>
+            <div class="booking-avatar">${esc(initials(name))}</div>
             <div class="booking-info">
-              <div class="booking-name">${name}</div>
-              <div class="booking-service">${b.services?.name ?? ''} · ${b.services?.duration_mins ?? ''} min</div>
+              <div class="booking-name">${esc(name)}</div>
+              <div class="booking-service">${esc(b.services?.name ?? '')} · ${Number(b.services?.duration_mins ?? 0)} min</div>
             </div>
             <span class="status-pill ${b.status}">${statusLabel(b.status)}</span>
           `
@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const todayCard = statCard("Today's Bookings")
           if (todayCard) {
             const valEl = todayCard.querySelector('.stat-value')
-            valEl.textContent = Number(valEl.textContent) + 1
+            valEl.textContent = (Number(valEl.textContent) || 0) + 1
           }
 
           // Increment panel badge count

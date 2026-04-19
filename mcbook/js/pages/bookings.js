@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { getSession } from '../auth.js'
-import { setTopbarDate, loadSidebarUser } from '../ui.js'
+import { setTopbarDate, loadSidebarUser, esc } from '../ui.js'
 
 const CHARGE_NOSHOW_URL = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/charge-noshow'
 const PAGE_SIZE = 10
@@ -71,14 +71,14 @@ async function loadBookings() {
     tr.innerHTML = `
       <td>
         <div class="customer-cell">
-          <div class="cust-avatar">${initials(name)}</div>
+          <div class="cust-avatar">${esc(initials(name))}</div>
           <div>
-            <div class="cust-name">${name}</div>
-            <div class="cust-email">${b.customers?.email ?? ''}</div>
+            <div class="cust-name">${esc(name)}</div>
+            <div class="cust-email">${esc(b.customers?.email ?? '')}</div>
           </div>
         </div>
       </td>
-      <td>${b.services?.name ?? ''}${payTag}${b.party_size > 1 ? `<div class="pay-tag">Party of ${b.party_size}</div>` : ''}</td>
+      <td>${esc(b.services?.name ?? '')}${payTag}${Number(b.party_size) > 1 ? `<div class="pay-tag">Party of ${Number(b.party_size)}</div>` : ''}</td>
       <td>${fmtDate(b.date)}</td>
       <td>${fmtTime(b.time)}</td>
       <td><span class="status-pill ${statusCls}">${statusLabel}</span></td>
@@ -159,14 +159,14 @@ async function loadCancelled() {
     tr.innerHTML = `
       <td>
         <div class="customer-cell">
-          <div class="cust-avatar">${initials(name)}</div>
+          <div class="cust-avatar">${esc(initials(name))}</div>
           <div>
-            <div class="cust-name">${name}</div>
-            <div class="cust-email">${b.customers?.email ?? ''}</div>
+            <div class="cust-name">${esc(name)}</div>
+            <div class="cust-email">${esc(b.customers?.email ?? '')}</div>
           </div>
         </div>
       </td>
-      <td>${b.services?.name ?? ''}</td>
+      <td>${esc(b.services?.name ?? '')}</td>
       <td>${fmtDate(b.date)}</td>
       <td>${fmtTime(b.time)}</td>
       <td><div class="row-actions"><button class="btn-view">View</button></div></td>
@@ -333,7 +333,7 @@ async function viewBooking(bookingId) {
   const statusLabel = b.status === 'pending_payment' ? 'Scheduled' : capitalize(b.status.replace('_', ' '))
   const statusCls   = b.status === 'pending_payment' ? 'scheduled' : b.status
 
-  document.getElementById('modal-title').textContent = `Booking — ${customer.name || 'Unknown'}`
+  document.getElementById('modal-title').textContent = `Booking \u2014 ${customer.name || 'Unknown'}`
 
   openModal(`
     <div class="modal-section">
@@ -361,10 +361,6 @@ async function viewBooking(bookingId) {
       <span class="modal-ref">${ref}</span>
     </div>
   `)
-}
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

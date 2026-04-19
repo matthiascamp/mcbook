@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { getSession } from '../auth.js'
-import { setTopbarDate, loadSidebarUser } from '../ui.js'
+import { setTopbarDate, loadSidebarUser, esc } from '../ui.js'
 
 // Row index → day_of_week: Mon(1) Tue(2) Wed(3) Thu(4) Fri(5) Sat(6) Sun(0)
 const DOW = [1, 2, 3, 4, 5, 6, 0]
@@ -99,7 +99,7 @@ async function loadBlockedDates() {
       <div class="blocked-item-left">
         <span class="blocked-icon">&#128683;</span>
         <div>
-          <div class="blocked-label">${bd.label ?? 'Blocked'}</div>
+          <div class="blocked-label">${esc(bd.label ?? 'Blocked')}</div>
           <div class="blocked-note">${fmtBlockedDate(bd.date)}</div>
         </div>
       </div>

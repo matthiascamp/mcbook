@@ -78,16 +78,30 @@ Deno.serve(async (req: Request) => {
         const bookingId = pi.metadata?.booking_id
         if (!bookingId) break
 
+        // Don't un-cancel a booking — if the owner already cancelled, leave it.
+        // Stripe retries can fire after cancellation; without this guard the
+        // booking would flip back to 'scheduled' even though it was cancelled.
         await supabase
           .from('bookings')
           .update({ status: 'scheduled', payment_status: 'paid' })
           .eq('id', bookingId)
+          .neq('status', 'cancelled')
 
-        // Log to payments audit table
+        // Log to payments audit table — skip if we've already recorded this charge
+        // (webhook retries can fire multiple times for the same event).
+        const chargeId = (pi.latest_charge as string) ?? null
+        if (chargeId) {
+          const { data: existing } = await supabase
+            .from('payments')
+            .select('id')
+            .eq('stripe_charge_id', chargeId)
+            .maybeSingle()
+          if (existing) break
+        }
         await supabase.from('payments').insert({
           booking_id:       bookingId,
           client_id:        pi.metadata?.client_id,
-          stripe_charge_id: pi.latest_charge as string ?? null,
+          stripe_charge_id: chargeId,
           amount:           pi.amount,
           type:             'booking_payment',
         })
@@ -125,13 +139,23 @@ Deno.serve(async (req: Request) => {
             .update({ payment_status: 'refunded', status: 'cancelled' })
             .eq('id', booking.id)
 
-          await supabase.from('payments').insert({
-            booking_id:       booking.id,
-            client_id:        booking.client_id,
-            stripe_charge_id: charge.id,
-            amount:           -(charge.amount_refunded ?? charge.amount), // negative = refund
-            type:             'refund',
-          })
+          // Dedup: refund webhooks can retry; we use charge.id + type='refund'
+          // as the uniqueness signature since a single charge only refunds once.
+          const { data: existingRefund } = await supabase
+            .from('payments')
+            .select('id')
+            .eq('stripe_charge_id', charge.id)
+            .eq('type', 'refund')
+            .maybeSingle()
+          if (!existingRefund) {
+            await supabase.from('payments').insert({
+              booking_id:       booking.id,
+              client_id:        booking.client_id,
+              stripe_charge_id: charge.id,
+              amount:           -(charge.amount_refunded ?? charge.amount), // negative = refund
+              type:             'refund',
+            })
+          }
         }
         break
       }
@@ -187,13 +211,22 @@ Deno.serve(async (req: Request) => {
             .single()
 
           if (client) {
-            await supabase.from('payments').insert({
-              booking_id:       null,               // payouts aren't per-booking
-              client_id:        client.id,
-              stripe_charge_id: payout.id,
-              amount:           payout.amount,
-              type:             'payout',
-            })
+            // Dedup: payout.paid can fire repeatedly for the same payout.
+            const { data: existingPayout } = await supabase
+              .from('payments')
+              .select('id')
+              .eq('stripe_charge_id', payout.id)
+              .eq('type', 'payout')
+              .maybeSingle()
+            if (!existingPayout) {
+              await supabase.from('payments').insert({
+                booking_id:       null,               // payouts aren't per-booking
+                client_id:        client.id,
+                stripe_charge_id: payout.id,
+                amount:           payout.amount,
+                type:             'payout',
+              })
+            }
           }
         }
         break

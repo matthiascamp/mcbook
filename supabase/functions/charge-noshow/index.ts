@@ -69,6 +69,18 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'No payment method saved for this booking' }, 422)
     }
 
+    // ── Refuse if a no-show fee has already been recorded for this booking ───
+    // Without this, clicking "No-show + Charge" twice would charge the card twice.
+    const { data: existingFee } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('booking_id', bookingId)
+      .eq('type', 'noshow_fee')
+      .maybeSingle()
+    if (existingFee) {
+      return json({ error: 'A no-show fee has already been charged for this booking' }, 409)
+    }
+
     const noShowFeeCents = Math.round(parseFloat(service?.noshow_fee ?? '0') * 100)
     if (noShowFeeCents <= 0) {
       // No fee configured — just mark as no_show without charging
@@ -92,7 +104,10 @@ Deno.serve(async (req: Request) => {
       httpClient: Stripe.createFetchHttpClient(),
     })
 
-    // Charge only the no-show fee from the saved card
+    // Charge only the no-show fee from the saved card.
+    // Idempotency key keyed on bookingId means if Stripe API retries or the
+    // client retries this request, Stripe returns the existing intent instead
+    // of creating a second charge.
     const paymentIntent = await stripe.paymentIntents.create({
       amount:           noShowFeeCents,
       currency:         'aud',
@@ -101,6 +116,8 @@ Deno.serve(async (req: Request) => {
       transfer_data:    { destination: client.stripe_account_id },
       metadata:         { booking_id: bookingId, client_id: booking.client_id, type: 'noshow_fee' },
       automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+    }, {
+      idempotencyKey: `noshow-${bookingId}`,
     })
 
     // Update booking status

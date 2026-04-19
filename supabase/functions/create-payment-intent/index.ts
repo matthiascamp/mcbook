@@ -8,10 +8,11 @@
  *
  * POST body (JSON):
  *   bookingId       string   UUID of the booking row in Supabase
- *   clientId        string   UUID of the McBook client (seller)
- *   amountCents     number   Total charge in AUD cents (e.g. 5000 = $50.00)
- *   platformFeeCents number  (optional) Fee to retain on the platform in cents
- *   customerEmail   string   Customer's email for Stripe receipt
+ *   customerEmail   string   Customer's email for Stripe receipt (optional)
+ *
+ * Amount and platform fee are computed server-side from the booking row's
+ * service price + the seller's clients.platform_fee_percent. Any amount/fee
+ * values in the request body are IGNORED — the client cannot set their own price.
  *
  * Returns: { clientSecret: string }
  *
@@ -19,7 +20,7 @@
  *   STRIPE_SECRET_KEY
  *   SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
- *   PLATFORM_FEE_PERCENT   (optional, e.g. "5" for 5%) — overridden by body param
+ *   PLATFORM_FEE_PERCENT   (fallback if clients.platform_fee_percent is null)
  */
 
 import Stripe from 'https://esm.sh/stripe@13.10.0?target=deno&no-check'
@@ -45,25 +46,45 @@ Deno.serve(async (req: Request) => {
       httpClient: Stripe.createFetchHttpClient(),
     })
 
-    const {
-      bookingId,
-      clientId,
-      amountCents,
-      platformFeeCents,
-      customerEmail,
-    } = await req.json()
+    const { bookingId, customerEmail } = await req.json()
 
-    if (!bookingId || !clientId || !amountCents) {
+    if (!bookingId) {
       return new Response(
-        JSON.stringify({ error: 'bookingId, clientId, and amountCents are required' }),
+        JSON.stringify({ error: 'bookingId is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
-    // ── Look up the seller's connected Stripe account ─────────────────────────
+    // ── Load the booking + its service so we know the authoritative price ─────
+    // Never trust the client for an amount — the widget runs in the public
+    // browser and could be tampered with.
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .select('id, client_id, service_id, stripe_payment_intent_id, services(price)')
+      .eq('id', bookingId)
+      .single()
+
+    if (bookingError || !booking) {
+      return new Response(
+        JSON.stringify({ error: 'Booking not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const servicePrice = Number((booking as any).services?.price ?? 0)
+    if (!servicePrice || servicePrice <= 0) {
+      return new Response(
+        JSON.stringify({ error: 'Booking has no payable service price' }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+    const amountCents = Math.round(servicePrice * 100)
+    const clientId    = booking.client_id
+
+    // ── Look up the seller's connected Stripe account + fee % ────────────────
     const { data: client, error: clientError } = await supabase
       .from('clients')
-      .select('stripe_account_id, stripe_charges_enabled, business_name')
+      .select('stripe_account_id, stripe_charges_enabled, business_name, platform_fee_percent')
       .eq('id', clientId)
       .single()
 
@@ -81,17 +102,17 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // ── Calculate platform fee ────────────────────────────────────────────────
-    // Use the fee explicitly sent by the caller, or fall back to the env default.
-    let feeCents = platformFeeCents ?? 0
-    if (!feeCents) {
-      const feePct = parseFloat(Deno.env.get('PLATFORM_FEE_PERCENT') ?? '0')
-      feeCents = feePct > 0 ? Math.round(amountCents * (feePct / 100)) : 0
-    }
+    // ── Calculate platform fee server-side ────────────────────────────────────
+    const perClientPct = Number((client as any).platform_fee_percent)
+    const envPct       = parseFloat(Deno.env.get('PLATFORM_FEE_PERCENT') ?? '0')
+    const feePct       = Number.isFinite(perClientPct) && perClientPct > 0 ? perClientPct : envPct
+    const feeCents     = feePct > 0 ? Math.round(amountCents * (feePct / 100)) : 0
 
     // ── Create PaymentIntent with destination charge ───────────────────────────
     // The full amount goes to Stripe; Stripe sends (amount − fee) to the seller's
     // bank account on payout, and retains `feeCents` for the platform.
+    // Idempotency key keyed on bookingId prevents duplicate intents on retries /
+    // double-clicks — Stripe will return the same intent for repeat calls.
     const paymentIntent = await stripe.paymentIntents.create({
       amount:   amountCents,
       currency: 'aud',
@@ -111,6 +132,8 @@ Deno.serve(async (req: Request) => {
       },
       description: `Booking via McBook — ${client.business_name ?? 'McBook'}`,
       automatic_payment_methods: { enabled: true },
+    }, {
+      idempotencyKey: `pi-booking-${bookingId}`,
     })
 
     // ── Store the PaymentIntent ID on the booking row ─────────────────────────

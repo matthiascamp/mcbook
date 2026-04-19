@@ -1,13 +1,13 @@
 import { supabase } from '../supabase.js'
 import { getSession } from '../auth.js'
-import { setTopbarDate, loadSidebarUser } from '../ui.js'
+import { setTopbarDate, loadSidebarUser, esc } from '../ui.js'
 
 const DOTS = ['dot-blue', 'dot-purple', 'dot-amber', 'dot-green']
 
 const PMODE_LABELS = {
-  free:        'Not collected through website',
-  noshow_only: 'Not collected through website',
-  after:       'Charge after appointment',
+  free:        'Pay outside website',
+  noshow_only: 'Pay outside website',
+  after:       'Pay through website',
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -52,12 +52,12 @@ async function loadServices() {
       <div class="service-card-main">
         <div class="service-dot ${DOTS[i % 4]}">&#9986;</div>
         <div class="service-info">
-          <div class="service-name">${svc.name}</div>
+          <div class="service-name">${esc(svc.name)}</div>
           <div class="service-tags">
             <span class="service-tag">${minsLabel(svc.duration_mins)}</span>
-            <span class="service-tag price">$${Number(svc.price).toFixed(2)}</span>
-            <span class="service-tag nosho">No-show: $${Number(svc.noshow_fee).toFixed(2)}</span>
-            <span class="service-tag">${PMODE_LABELS[svc.payment_mode] ?? 'No-show protection'}</span>
+            ${Number(svc.price) > 0 ? `<span class="service-tag price">$${Number(svc.price).toFixed(2)}</span>` : ''}
+            ${Number(svc.noshow_fee) > 0 ? `<span class="service-tag nosho">Cancellation fee: $${Number(svc.noshow_fee).toFixed(2)}</span>` : ''}
+            <span class="service-tag">${PMODE_LABELS[svc.payment_mode] ?? 'Pay outside website'}</span>
           </div>
         </div>
         <div class="service-actions">
@@ -126,13 +126,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function getNumInputs() { return panel.querySelectorAll('input[type="number"]') }
 
+  // Price and cancellation-fee inputs stay editable in every payment mode.
+  // A service can be "paid outside the site" but still display a price to
+  // customers, and can charge a cancellation fee without routing full payment
+  // through the site.
   function syncPriceFields() {
-    const locked = pmodeSelect.value === 'free'
-    document.getElementById('field-price').classList.toggle('field-locked', locked)
-    document.getElementById('field-noshow').classList.toggle('field-locked', locked)
-    if (locked) { priceInput.value = ''; noshowInput.value = '' }
+    document.getElementById('field-price')?.classList.remove('field-locked')
+    document.getElementById('field-noshow')?.classList.remove('field-locked')
   }
 
+  // Warn if they pick "Pay through website" without Stripe connected.
+  // Note: a cancellation fee > 0 in "Pay outside website" also needs Stripe
+  // (to save a card on file) — that check happens at save time below.
   pmodeSelect.addEventListener('change', () => {
     if (pmodeSelect.value !== 'free' && !stripeEnabled) {
       pmodeSelect.value = 'free'
@@ -157,7 +162,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const active = toggle.checked
     const label  = card.querySelector('.service-active-toggle')
     label.lastChild.textContent = active ? ' Active' : ' Inactive'
-    await supabase.from('services').update({ active }).eq('id', card.dataset.serviceId)
+    const { error } = await supabase.from('services').update({ active }).eq('id', card.dataset.serviceId)
+    if (error) {
+      console.error('[services toggle]', error)
+      alert('Could not update service: ' + error.message)
+      toggle.checked = !active
+      label.lastChild.textContent = !active ? ' Active' : ' Inactive'
+    }
   })
 
   // Delegate: delete / edit
@@ -168,18 +179,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (e.target.closest('.btn-delete')) {
       if (!window.confirm('Delete this service?')) return
-      await supabase.from('services').delete().eq('id', id)
+      const { error } = await supabase.from('services').delete().eq('id', id)
+      if (error) {
+        // Postgres FK code 23503 — bookings still reference this service.
+        // Offer to archive it instead so the service is hidden from the public
+        // widget but historical bookings still keep their service reference.
+        const isFkError = error.code === '23503' || /foreign key/i.test(error.message)
+        if (isFkError) {
+          const archive = window.confirm(
+            'This service has bookings attached, so it can\'t be fully deleted ' +
+            '(your booking history would lose what was booked).\n\n' +
+            'Archive it instead? It will be hidden from your public booking page ' +
+            'but stay linked to past bookings.'
+          )
+          if (!archive) return
+          const { error: archErr } = await supabase.from('services')
+            .update({ active: false }).eq('id', id)
+          if (archErr) {
+            console.error('[services archive]', archErr)
+            alert('Could not archive service: ' + archErr.message)
+            return
+          }
+          await loadServices()
+          return
+        }
+        console.error('[services delete]', error)
+        alert('Could not delete service: ' + error.message)
+        return
+      }
       await loadServices()
       return
     }
 
     if (e.target.closest('.btn-edit')) {
-      const { data } = await supabase.from('services').select('*').eq('id', id).single()
+      const { data, error } = await supabase.from('services').select('*').eq('id', id).single()
+      if (error) {
+        console.error('[services fetch]', error)
+        alert('Could not load service: ' + error.message)
+        return
+      }
       if (!data) return
       nameInput.value = data.name
       descInput.value = data.description ?? ''
       durSelect.value   = durationSelectValue(data.duration_mins)
-      pmodeSelect.value = data.payment_mode ?? 'after'
+      // Legacy 'noshow_only' rows will fall back to 'free' in the dropdown —
+      // that's fine because the behaviour is now driven by the noshow_fee
+      // value (free + fee > 0 behaves identically to the old noshow_only).
+      const validModes = ['free', 'after']
+      pmodeSelect.value = validModes.includes(data.payment_mode) ? data.payment_mode : 'free'
       priceInput.value  = data.price
       noshowInput.value = data.noshow_fee
       editId = id
@@ -200,16 +247,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (!payload.name) return
 
+    // Stripe is required if (a) payment runs through the site, or
+    // (b) a cancellation fee is set in any mode (we need a card on file).
+    const needsStripe = payload.payment_mode !== 'free' || payload.noshow_fee > 0
+    if (needsStripe && !stripeEnabled) {
+      alert('Connect Stripe before enabling payments or a cancellation fee.\nGo to Payouts in the sidebar to set it up.')
+      return
+    }
+
+    saveBtn.disabled = true
+    const originalLabel = saveBtn.textContent
+    saveBtn.textContent = 'Saving…'
+    let error
     if (editId) {
-      await supabase.from('services').update(payload).eq('id', editId)
+      ({ error } = await supabase.from('services').update(payload).eq('id', editId))
     } else {
-      await supabase.from('services').insert({ ...payload, client_id: uid, active: true })
+      ({ error } = await supabase.from('services').insert({ ...payload, client_id: uid, active: true }))
+    }
+    saveBtn.disabled = false
+    saveBtn.textContent = originalLabel
+    if (error) {
+      console.error('[services save]', error)
+      alert('Could not save service: ' + error.message)
+      return
     }
     clearForm()
     await loadServices()
   })
 
   cancelBtn.addEventListener('click', clearForm)
+
+  // Wire the topbar "+ Add New Service" button to focus the add-service panel
+  if (!isRestaurant) {
+    document.querySelector('.topbar-right .btn-primary')?.addEventListener('click', () => {
+      clearForm()
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      nameInput.focus()
+    })
+  }
 
   document.getElementById('btn-add-seating')?.addEventListener('click', async () => {
     const nameVal = document.getElementById('seating-name-input')?.value.trim()
@@ -245,8 +320,8 @@ async function loadSeatingAreas() {
       <div class="seating-item-left">
         <span style="font-size:1.1rem;">&#127869;&#65039;</span>
         <div>
-          <div class="seating-name">${area.name}</div>
-          <div class="seating-cap">${area.capacity} seats</div>
+          <div class="seating-name">${esc(area.name)}</div>
+          <div class="seating-cap">${Number(area.capacity)} seats</div>
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -289,7 +364,12 @@ async function loadSeatingAreas() {
 
     view.querySelector('.btn-remove-area').addEventListener('click', async () => {
       if (!confirm('Delete this seating area?')) return
-      await supabase.from('seating_areas').delete().eq('id', area.id)
+      const { error } = await supabase.from('seating_areas').delete().eq('id', area.id)
+      if (error) {
+        console.error('[seating_areas delete]', error)
+        alert('Could not delete area: ' + error.message)
+        return
+      }
       await loadSeatingAreas()
     })
 
@@ -305,7 +385,13 @@ async function loadSeatingAreas() {
       const capVal  = parseInt(capInp.value, 10)
       if (!nameVal || capVal < 1) return
       saveBtn.textContent = 'Saving…'; saveBtn.disabled = true
-      await supabase.from('seating_areas').update({ name: nameVal, capacity: capVal }).eq('id', area.id)
+      const { error } = await supabase.from('seating_areas').update({ name: nameVal, capacity: capVal }).eq('id', area.id)
+      if (error) {
+        saveBtn.textContent = 'Save'; saveBtn.disabled = false
+        console.error('[seating_areas update]', error)
+        alert('Could not update area: ' + error.message)
+        return
+      }
       await loadSeatingAreas()
     })
   }

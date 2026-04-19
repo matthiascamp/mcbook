@@ -1,6 +1,6 @@
 import { supabase } from '../supabase.js'
 import { getSession } from '../auth.js'
-import { setTopbarDate, loadSidebarUser } from '../ui.js'
+import { setTopbarDate, loadSidebarUser, esc } from '../ui.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function monthStartISO() {
@@ -61,17 +61,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       tr.innerHTML = `
         <td>
           <div class="customer-cell">
-            <div class="cust-avatar c${((from + i) % 8) + 1}">${initials(c.name)}</div>
+            <div class="cust-avatar c${((from + i) % 8) + 1}">${esc(initials(c.name))}</div>
             <div>
-              <div class="cust-name">${c.name}</div>
+              <div class="cust-name">${esc(c.name)}</div>
               <div class="cust-since">Customer since ${MONTHS[since.getMonth()]} ${since.getFullYear()}</div>
             </div>
           </div>
         </td>
-        <td>${c.email}</td>
-        <td>${c.phone ?? '—'}</td>
-        <td><span class="booking-count">${bookingCount}</span></td>
-        <td><span class="noshow-count${noshowCount === 0 ? ' none' : ''}">${noshowCount}</span></td>
+        <td>${esc(c.email)}</td>
+        <td>${esc(c.phone ?? '—')}</td>
+        <td><span class="booking-count">${Number(bookingCount)}</span></td>
+        <td><span class="noshow-count${noshowCount === 0 ? ' none' : ''}">${Number(noshowCount)}</span></td>
         <td><button class="btn-view">View</button></td>
       `
       tbody.appendChild(tr)

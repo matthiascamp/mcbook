@@ -1003,7 +1003,11 @@
 
     _headerHTML() {
       const mode      = this.state.service?.payment_mode;
-      const needsCard = mode && mode !== 'free';
+      // Card is needed whenever money can leave the customer's card:
+      // either because payment runs through the site, or because the service
+      // has a cancellation fee we may need to charge on a no-show / late cancel.
+      const hasFee    = Number(this.state.service?.noshow_fee ?? 0) > 0;
+      const needsCard = (mode && mode !== 'free') || hasFee;
       const labels    = ['Service','Date','Time','Contact', needsCard ? 'Payment' : 'Confirm','Done'];
       const bars      = labels.map((_, i) => {
         const n = i + 1;
@@ -1121,7 +1125,7 @@
               <div class="bw-service-name">${s.name}</div>
               <div class="bw-service-meta">${fmtDuration(s.duration_mins)}</div>
             </div>
-            ${s.payment_mode !== 'free' ? `<div class="bw-service-price">$${s.price}</div>` : ''}
+            ${Number(s.price) > 0 ? `<div class="bw-service-price">$${Number(s.price).toFixed(2)}</div>` : ''}
           </div>`;
       }).join('');
 
@@ -1278,7 +1282,10 @@
     // Step 5 — Payment / card save / confirm depending on service payment_mode
     _step5() {
       const { service, date, time } = this.state;
-      const mode    = service?.payment_mode || 'free';
+      const mode     = service?.payment_mode || 'free';
+      const feeAmt   = Number(service?.noshow_fee ?? 0);
+      const hasFee   = feeAmt > 0;
+      const needsCard = mode !== 'free' || hasFee;
       const isRest  = this._businessMode === 'restaurant';
       const dateStr = date
         ? date.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})
@@ -1308,7 +1315,7 @@
 
       const confirmLabel = isRest ? 'Reserve' : 'Book';
 
-      if (mode === 'free') {
+      if (!needsCard) {
         return `
           <div class="bw-step-title">Review &amp; Confirm</div>
           ${summaryRows}
@@ -1320,14 +1327,31 @@
           </div>`;
       }
 
-      // Card-required modes (noshow_only, after)
-      const chargeRow = isRest
-        ? ''
-        : `<div class="bw-summary-row"><span class="bw-summary-label">Due after visit</span><span class="bw-summary-val">$${service.price}</span></div>`;
+      // Card-required: either online-pay mode, or a cancellation fee applies.
+      // The summary row label depends on which situation applies.
+      const feeStr = `$${feeAmt.toFixed(2)}`;
+      let chargeRow = '';
+      if (!isRest) {
+        if (mode !== 'free') {
+          chargeRow = `<div class="bw-summary-row"><span class="bw-summary-label">Due after visit</span><span class="bw-summary-val">$${Number(service.price).toFixed(2)}</span></div>`;
+        } else if (hasFee) {
+          chargeRow = `<div class="bw-summary-row"><span class="bw-summary-label">Cancellation fee</span><span class="bw-summary-val">${feeStr}</span></div>`;
+        }
+      }
 
-      const modeNote = isRest
-        ? 'We require a card to hold your reservation. You won\'t be charged now — your card is only used if you cancel late or don\'t show up.'
-        : 'Your card will be saved and charged after your appointment.';
+      let modeNote;
+      if (isRest) {
+        modeNote = hasFee
+          ? `We require a card to hold your reservation. You won\u2019t be charged now \u2014 a ${feeStr} fee only applies if you cancel late or don\u2019t show up.`
+          : 'We require a card to hold your reservation. You won\u2019t be charged now \u2014 your card is only used if you cancel late or don\u2019t show up.';
+      } else if (mode !== 'free') {
+        modeNote = hasFee
+          ? `Your card will be saved and charged after your appointment. A ${feeStr} cancellation fee also applies if you cancel late or don\u2019t show up.`
+          : 'Your card will be saved and charged after your appointment.';
+      } else {
+        // mode === 'free' && hasFee
+        modeNote = `Payment for the service itself is arranged directly with the business. Your card is saved so a ${feeStr} cancellation fee can be charged if you cancel late or don\u2019t show up.`;
+      }
 
       return `
         <div class="bw-step-title">Review &amp; Card Details</div>
@@ -1416,8 +1440,10 @@
         case 2: this._bindStep2(); break;
         case 3: this._bindStep3(); break;
         case 5: {
-          const mode = this.state.service?.payment_mode || 'free';
-          if (mode !== 'free' && !this._stripeElements) {
+          const mode     = this.state.service?.payment_mode || 'free';
+          const hasFee   = Number(this.state.service?.noshow_fee ?? 0) > 0;
+          const needsCard = mode !== 'free' || hasFee;
+          if (needsCard && !this._stripeElements) {
             const nextBtn = this.root.querySelector('#bw-next');
             if (nextBtn) nextBtn.disabled = true;
             mountStripeElements(this).then(() => {
@@ -1544,13 +1570,15 @@
 
         try {
           const { contact, service, date } = this.state;
-          const mode     = service.payment_mode || 'free';
-          const dateISO  = date.toISOString().slice(0, 10);
-          const timeHHMM = timeToHHMM(this.state.time);
+          const mode      = service.payment_mode || 'free';
+          const hasFee    = Number(service?.noshow_fee ?? 0) > 0;
+          const needsCard = mode !== 'free' || hasFee;
+          const dateISO   = date.toISOString().slice(0, 10);
+          const timeHHMM  = timeToHHMM(this.state.time);
 
           await sbReady;
 
-          if (mode === 'free') {
+          if (!needsCard) {
             // No card — upsert customer and insert booking directly
             let customerId;
             const { data: existing } = await sb.from('customers')
@@ -1595,7 +1623,9 @@
             return;
           }
 
-          // noshow_only or after — confirm card setup then insert booking
+          // Card required (online payment mode OR cancellation fee set) —
+          // confirm the card setup intent, then insert the booking with the
+          // saved payment_method_id so we can charge later if needed.
           const { stripe, cardNumber, clientSecret } = this._stripeElements;
           const { setupIntent, error: stripeErr } = await stripe.confirmCardSetup(clientSecret, {
             payment_method: {
@@ -1656,8 +1686,10 @@
     }
 
     _back() {
-      const mode = this.state.service?.payment_mode || 'free';
-      if (this.state.step === 5 && mode !== 'free') {
+      const mode     = this.state.service?.payment_mode || 'free';
+      const hasFee   = Number(this.state.service?.noshow_fee ?? 0) > 0;
+      const needsCard = mode !== 'free' || hasFee;
+      if (this.state.step === 5 && needsCard) {
         destroyStripeSlots(this);
         this._customerId = null;
       }
