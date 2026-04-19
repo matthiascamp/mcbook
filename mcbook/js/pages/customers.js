@@ -12,6 +12,21 @@ function initials(name) {
 }
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
+function fmtDate(iso) {
+  const d = new Date(iso + 'T00:00:00')
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+function fmtTime(t) {
+  if (!t) return ''
+  const [h, m] = t.split(':').map(Number)
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
+}
+function statusLabel(s) {
+  if (!s) return ''
+  if (s === 'pending_payment') return 'Scheduled'
+  return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   const session = await getSession()
@@ -72,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td>${esc(c.phone ?? '—')}</td>
         <td><span class="booking-count">${Number(bookingCount)}</span></td>
         <td><span class="noshow-count${noshowCount === 0 ? ' none' : ''}">${Number(noshowCount)}</span></td>
-        <td><button class="btn-view">View</button></td>
+        <td><button class="btn-view" data-customer-id="${esc(c.id)}">View</button></td>
       `
       tbody.appendChild(tr)
     })
@@ -120,6 +135,102 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await loadPage(1)
+
+  // ── Customer detail modal ────────────────────────────────────────────────
+  const modal      = document.getElementById('customer-modal')
+  const modalTitle = document.getElementById('customer-modal-title')
+  const modalBody  = document.getElementById('customer-modal-body')
+  const modalClose = document.getElementById('customer-modal-close')
+
+  function closeModal() {
+    modal?.classList.remove('open')
+    if (modalBody) modalBody.innerHTML = '<div class="modal-loading">Loading\u2026</div>'
+  }
+  modalClose?.addEventListener('click', closeModal)
+  modal?.addEventListener('click', e => { if (e.target === modal) closeModal() })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal() })
+
+  async function openCustomer(customerId) {
+    if (!modal || !modalBody) return
+    modal.classList.add('open')
+    modalBody.innerHTML = '<div class="modal-loading">Loading\u2026</div>'
+
+    const { data: cust, error: custErr } = await supabase.from('customers')
+      .select('id, name, email, phone, created_at')
+      .eq('id', customerId).eq('client_id', uid).single()
+    if (custErr || !cust) {
+      modalBody.innerHTML = `<div class="modal-loading">Could not load customer${custErr ? ': ' + esc(custErr.message) : ''}</div>`
+      return
+    }
+
+    const { data: bookings } = await supabase.from('bookings')
+      .select('id, date, time, status, services(name, price)')
+      .eq('customer_id', customerId).eq('client_id', uid)
+      .order('date', { ascending: false }).order('time', { ascending: false })
+      .limit(50)
+
+    const list   = bookings ?? []
+    const total  = list.length
+    const done   = list.filter(b => b.status === 'completed').length
+    const upcoming = list.filter(b => ['scheduled','confirmed','pending_payment'].includes(b.status)).length
+    const cancelled = list.filter(b => b.status === 'cancelled').length
+    const noshow = list.filter(b => b.status === 'no_show').length
+    const spend  = list
+      .filter(b => b.status === 'completed')
+      .reduce((s, b) => s + Number(b.services?.price || 0), 0)
+
+    modalTitle.textContent = cust.name || 'Customer'
+
+    const since = new Date(cust.created_at)
+    const bookingsHtml = list.length === 0
+      ? '<div class="modal-booking-empty">No bookings yet.</div>'
+      : list.slice(0, 10).map(b => `
+          <div class="modal-booking-row">
+            <div class="modal-booking-main">
+              <span class="modal-booking-service">${esc(b.services?.name ?? 'Service')}</span>
+              <span class="modal-booking-date">${fmtDate(b.date)} at ${fmtTime(b.time)}</span>
+            </div>
+            <span class="status-pill ${b.status}">${statusLabel(b.status)}</span>
+          </div>`).join('')
+
+    const moreNote = list.length > 10
+      ? `<div class="modal-booking-empty">Showing 10 of ${list.length}.</div>`
+      : ''
+
+    modalBody.innerHTML = `
+      <div class="modal-section">
+        <div class="modal-section-title">Contact</div>
+        <div class="modal-row"><span class="modal-label">Name</span><span class="modal-val">${esc(cust.name ?? '')}</span></div>
+        <div class="modal-row"><span class="modal-label">Email</span><span class="modal-val">${esc(cust.email ?? '')}</span></div>
+        <div class="modal-row"><span class="modal-label">Phone</span><span class="modal-val">${esc(cust.phone ?? '\u2014')}</span></div>
+        <div class="modal-row"><span class="modal-label">Customer since</span><span class="modal-val">${MONTHS[since.getMonth()]} ${since.getFullYear()}</span></div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">Stats</div>
+        <div class="modal-row"><span class="modal-label">Total bookings</span><span class="modal-val">${Number(total)}</span></div>
+        <div class="modal-row"><span class="modal-label">Upcoming</span><span class="modal-val">${Number(upcoming)}</span></div>
+        <div class="modal-row"><span class="modal-label">Completed</span><span class="modal-val">${Number(done)}</span></div>
+        <div class="modal-row"><span class="modal-label">Cancelled</span><span class="modal-val">${Number(cancelled)}</span></div>
+        <div class="modal-row"><span class="modal-label">No-shows</span><span class="modal-val">${Number(noshow)}</span></div>
+        <div class="modal-row"><span class="modal-label">Lifetime spend</span><span class="modal-val">$${spend.toFixed(2)}</span></div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">Recent bookings</div>
+        ${bookingsHtml}
+        ${moreNote}
+      </div>
+    `
+  }
+
+  // Delegate click on the View button
+  document.querySelector('.data-table tbody')?.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-view')
+    if (!btn) return
+    const id = btn.dataset.customerId
+    if (id) openCustomer(id)
+  })
 
   // ── Client-side search ────────────────────────────────────────────────────
   document.querySelector('.filter-input')?.addEventListener('input', e => {

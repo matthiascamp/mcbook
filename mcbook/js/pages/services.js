@@ -56,7 +56,7 @@ async function loadServices() {
           <div class="service-tags">
             <span class="service-tag">${minsLabel(svc.duration_mins)}</span>
             ${Number(svc.price) > 0 ? `<span class="service-tag price">$${Number(svc.price).toFixed(2)}</span>` : ''}
-            ${Number(svc.noshow_fee) > 0 ? `<span class="service-tag nosho">Cancellation fee: $${Number(svc.noshow_fee).toFixed(2)}</span>` : ''}
+            ${Number(svc.noshow_fee) > 0 ? `<span class="service-tag nosho">No-show fee: $${Number(svc.noshow_fee).toFixed(2)}</span>` : ''}
             <span class="service-tag">${PMODE_LABELS[svc.payment_mode] ?? 'Pay outside website'}</span>
           </div>
         </div>
@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // (b) a cancellation fee is set in any mode (we need a card on file).
     const needsStripe = payload.payment_mode !== 'free' || payload.noshow_fee > 0
     if (needsStripe && !stripeEnabled) {
-      alert('Connect Stripe before enabling payments or a cancellation fee.\nGo to Payouts in the sidebar to set it up.')
+      alert('Connect Stripe before enabling payments or a no-show fee.\nGo to Payouts in the sidebar to set it up.')
       return
     }
 

@@ -1327,7 +1327,7 @@
           </div>`;
       }
 
-      // Card-required: either online-pay mode, or a cancellation fee applies.
+      // Card-required: either online-pay mode, or a no-show fee applies.
       // The summary row label depends on which situation applies.
       const feeStr = `$${feeAmt.toFixed(2)}`;
       let chargeRow = '';
@@ -1335,22 +1335,22 @@
         if (mode !== 'free') {
           chargeRow = `<div class="bw-summary-row"><span class="bw-summary-label">Due after visit</span><span class="bw-summary-val">$${Number(service.price).toFixed(2)}</span></div>`;
         } else if (hasFee) {
-          chargeRow = `<div class="bw-summary-row"><span class="bw-summary-label">Cancellation fee</span><span class="bw-summary-val">${feeStr}</span></div>`;
+          chargeRow = `<div class="bw-summary-row"><span class="bw-summary-label">No-show fee</span><span class="bw-summary-val">${feeStr}</span></div>`;
         }
       }
 
       let modeNote;
       if (isRest) {
         modeNote = hasFee
-          ? `We require a card to hold your reservation. You won\u2019t be charged now \u2014 a ${feeStr} fee only applies if you cancel late or don\u2019t show up.`
-          : 'We require a card to hold your reservation. You won\u2019t be charged now \u2014 your card is only used if you cancel late or don\u2019t show up.';
+          ? `We require a card to hold your reservation. You won\u2019t be charged now \u2014 you may be charged a ${feeStr} no-show fee if you don\u2019t show up and haven\u2019t let us know ahead of time.`
+          : 'We require a card to hold your reservation. You won\u2019t be charged now \u2014 your card is only used if you don\u2019t show up.';
       } else if (mode !== 'free') {
         modeNote = hasFee
-          ? `Your card will be saved and charged after your appointment. A ${feeStr} cancellation fee also applies if you cancel late or don\u2019t show up.`
+          ? `Your card will be saved and charged after your appointment. You may also be charged a ${feeStr} no-show fee if you don\u2019t show up and haven\u2019t let us know ahead of time.`
           : 'Your card will be saved and charged after your appointment.';
       } else {
         // mode === 'free' && hasFee
-        modeNote = `Payment for the service itself is arranged directly with the business. Your card is saved so a ${feeStr} cancellation fee can be charged if you cancel late or don\u2019t show up.`;
+        modeNote = `Payment for the service itself is arranged directly with the business. Your card is saved \u2014 you may be charged a ${feeStr} no-show fee if you don\u2019t show up and haven\u2019t let us know ahead of time.`;
       }
 
       return `
