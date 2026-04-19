@@ -410,6 +410,8 @@
     .theme-swatch label { font-size: 0.65rem; color: var(--text-2); }
     .theme-swatch input[type="color"] { width: 36px; height: 36px; border-radius: 7px; border: 1px solid var(--border); cursor: pointer; padding: 2px; background: transparent; }
     .theme-swatch input[type="color"]:hover { border-color: var(--accent); }
+    .theme-swatch input[type="text"] { width: 72px; padding: 4px 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: 0.7rem; font-family: monospace; text-align: center; outline: none; }
+    .theme-swatch input[type="text"]:focus { border-color: var(--accent); }
     .widget-css-editor {
       width: 100%; min-height: 200px; max-height: 420px;
       font-family: 'SF Mono','Fira Code','Cascadia Code',monospace;
@@ -1191,7 +1193,10 @@
               <div class="theme-swatches">
                 ${[['bg','Background',D.bg],['surface','Cards',D.surface],['accent','Accent',D.accent],['text','Text',D.text],['sub','Subtext',D.sub]].map(([k,l,def])=>`
                   <div class="theme-swatch">
-                    <input type="color" id="tc-${k}-${escAttr(client.id)}" value="${wt[k]||def}">
+                    <input type="color" id="tc-${k}-${escAttr(client.id)}" value="${wt[k]||def}"
+                      oninput="document.getElementById('tc-${k}-hex-${escAttr(client.id)}').value=this.value">
+                    <input type="text" id="tc-${k}-hex-${escAttr(client.id)}" value="${wt[k]||def}" maxlength="7" placeholder="#000000"
+                      oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value))document.getElementById('tc-${k}-${escAttr(client.id)}').value=this.value">
                     <label>${l}</label>
                   </div>`).join('')}
               </div>
@@ -1204,6 +1209,7 @@
                   <option value="Georgia" ${wt.font==='Georgia'?'selected':''}>Georgia (Serif)</option>
                   <option value="'Playfair Display'" ${wt.font==="'Playfair Display'"?'selected':''}>Playfair Display</option>
                   <option value="'DM Sans'" ${wt.font==="'DM Sans'"?'selected':''}>DM Sans</option>
+                  <option value="'Poppins'" ${wt.font==="'Poppins'"?'selected':''}>Poppins</option>
                 </select>
               </div>
 
@@ -1338,7 +1344,10 @@
 
     // ── Widget theme ─────────────────────────────────────────────────────────
     async function saveWidgetTheme(id, btn) {
-      const v = (key) => document.getElementById(`tc-${key}-${id}`)?.value
+      const v = (key) => {
+        const hex = document.getElementById(`tc-${key}-hex-${id}`)?.value || ''
+        return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : document.getElementById(`tc-${key}-${id}`)?.value
+      }
       const theme = {
         bg:      v('bg'),
         surface: v('surface'),
@@ -1385,6 +1394,8 @@
         for (const [k, def] of Object.entries(D)) {
           const el = document.getElementById(`tc-${k}-${id}`)
           if (el) el.value = def
+          const hexEl = document.getElementById(`tc-${k}-hex-${id}`)
+          if (hexEl) hexEl.value = def
         }
         const fontEl   = document.getElementById(`tc-font-${id}`)
         const radiusEl = document.getElementById(`tc-radius-${id}`)
