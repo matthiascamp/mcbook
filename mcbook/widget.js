@@ -108,6 +108,25 @@
     const ccDiv = document.createElement('div');
     ccDiv.setAttribute('slot', 'stripe-card-cvc');
     ccDiv.setAttribute('style', slotStyle);
+
+    // Inject a light-DOM stylesheet to force Stripe iframes to render in light
+    // mode. Host-page dark themes and OS dark-mode can bleed into the iframes
+    // because they live outside the Shadow DOM.
+    if (!document.getElementById('mcbook-stripe-fix')) {
+      const fix = document.createElement('style');
+      fix.id = 'mcbook-stripe-fix';
+      fix.textContent = `
+        div[slot^="stripe-"],
+        div[slot^="stripe-"] iframe,
+        div[slot^="stripe-"] .__PrivateStripeElement,
+        div[slot^="stripe-"] .__PrivateStripeElement iframe {
+          background: #ffffff !important;
+          color-scheme: light !important;
+        }
+      `;
+      document.head.appendChild(fix);
+    }
+
     widget._host.appendChild(cnDiv);
     widget._host.appendChild(ceDiv);
     widget._host.appendChild(ccDiv);
@@ -116,12 +135,17 @@
     const elements = stripe.elements({
       appearance: {
         theme: 'flat',
+        labels: 'floating',
         variables: {
           colorBackground:      '#ffffff',
           colorText:            '#0a0a0f',
           colorTextPlaceholder: '#94a3b8',
           fontFamily:           'Inter, system-ui, sans-serif',
           fontSizeBase:         '14px',
+          colorPrimary:         '#0a0a0f',
+        },
+        rules: {
+          '.Input': { backgroundColor: '#ffffff', color: '#0a0a0f' },
         },
       },
     });
