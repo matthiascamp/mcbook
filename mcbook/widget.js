@@ -984,9 +984,23 @@
         }
 
         if (data?.widget_theme) {
-          // Admin-configured custom palette — merge with dark/light defaults
+          // Admin-configured custom palette — merge with dark/light defaults,
+          // auto-deriving accent-related colours from the accent if not provided.
           const wt   = data.widget_theme;
           const dark = isDark(wt.bg || '#0a0a0f');
+          // Parse hex to r,g,b for deriving tints
+          const hex2rgb = (h) => {
+            const c = h.replace('#', '');
+            return [parseInt(c.slice(0,2),16), parseInt(c.slice(2,4),16), parseInt(c.slice(4,6),16)];
+          };
+          const [ar, ag, ab] = hex2rgb(wt.accent || (dark ? '#4ade80' : '#16a34a'));
+          const derived = {
+            accentBg: `rgba(${ar},${ag},${ab},0.07)`,
+            border:   dark ? `rgba(${ar},${ag},${ab},0.18)` : 'rgba(0,0,0,0.09)',
+            btnText:  dark ? (wt.bg || '#0a0a0f') : '#ffffff',
+            inputBg:  wt.bg || (dark ? '#0d0d15' : '#eef2ee'),
+            glow:     `0 0 12px rgba(${ar},${ag},${ab},0.15)`,
+          };
           const base = dark ? {
             bg:'#0a0a0f', surface:'#111118', border:'#1e1e2e', accent:'#4ade80',
             accentBg:'rgba(74,222,128,0.07)', text:'#ffffff', sub:'#8b8b9e',
@@ -996,7 +1010,7 @@
             accentBg:'rgba(22,163,74,0.07)', text:'#0a0a0f', sub:'#64748b',
             btnText:'#ffffff', inputBg:'#eef2ee', glow:'0 0 12px rgba(22,163,74,0.12)',
           };
-          this._styleEl.textContent = buildCSS({ _palette: { ...base, ...wt } });
+          this._styleEl.textContent = buildCSS({ _palette: { ...base, ...derived, ...wt } });
           this._render();
         } else if (data?.widget_custom_styling) {
           this.theme = detectHostStyles();
