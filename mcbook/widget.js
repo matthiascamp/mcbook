@@ -523,6 +523,7 @@
       .bw-body {
         padding: 22px 24px;
         background: ${t.bg};
+        min-height: 420px;
       }
       .bw-step-title {
         font-size: 0.875rem;
