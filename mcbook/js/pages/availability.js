@@ -29,12 +29,11 @@ function fmtBlockedDate(iso) {
 // ── State ─────────────────────────────────────────────────────────────────────
 let uid = ''
 
-// ── Generate 30-min time option list 6:00 AM – 10:00 PM ──────────────────────
+// ── Generate 30-min time option list 12:00 AM – 11:30 PM ─────────────────────
 function timeOptions() {
   const opts = []
-  for (let h = 6; h <= 22; h++) {
+  for (let h = 0; h < 24; h++) {
     for (const m of [0, 30]) {
-      if (h === 22 && m === 30) break
       const ampm = h >= 12 ? 'PM' : 'AM'
       const h12  = h % 12 || 12
       opts.push(`${h12}:${String(m).padStart(2, '0')} ${ampm}`)
