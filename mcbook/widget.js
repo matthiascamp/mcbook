@@ -172,17 +172,24 @@
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
 
-  // Format duration_mins as "X min" or "X hr"
+  // Format duration_mins as "X min", "X hr", or "X hr Y min"
   function fmtDuration(mins) {
     if (mins < 60) return `${mins} min`;
-    return `${mins / 60} hr`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
+  }
+
+  // Format a local Date as YYYY-MM-DD without UTC shift
+  function toLocalISO(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   // ─── Live slot generation ─────────────────────────────────────────────────
   async function getAvailableSlots(businessId, dateObj, serviceDurationMins, partySize, totalCapacity, businessMode) {
     partySize    = partySize    || 1;
     businessMode = businessMode || 'service';
-    const dateISO   = dateObj.toISOString().slice(0, 10);
+    const dateISO   = toLocalISO(dateObj);
     const dayOfWeek = dateObj.getDay();
 
     await sbReady;
@@ -388,7 +395,7 @@
       if (date > maxDate) return false;
     }
 
-    const dateStr = date.toISOString().slice(0, 10);
+    const dateStr = toLocalISO(date);
     const ov = overrides?.get(dateStr);
 
     if (ov) {
@@ -945,9 +952,11 @@
       shadow.appendChild(customStyleEl);
       this._customStyleEl = customStyleEl;
 
-      // Root wrapper
+      // Root wrapper — hidden until theme is resolved to avoid flash
       this.root = document.createElement('div');
       this.root.className = 'bw-wrap';
+      this.root.style.opacity = '0';
+      this.root.style.transition = 'opacity 0.15s ease';
       shadow.appendChild(this.root);
 
       // Keep host reference so Stripe can mount in light DOM via slots
@@ -997,6 +1006,8 @@
       } catch (_) {
         // Non-fatal — keep default theme
       }
+      // Reveal widget now that theme is resolved
+      this.root.style.opacity = '1';
     }
 
     // ── Render full widget based on current state ────────────────────────────
@@ -1069,7 +1080,7 @@
       if (!this._services) {
         (async () => {
           await sbReady;
-          const todayISO = new Date().toISOString().slice(0, 10);
+          const todayISO = toLocalISO(new Date());
           const [{ data }, { data: rules }, { data: settings }, { data: ovData }, { data: clientData }, { data: seatAreas }] = await Promise.all([
             sb.from('services')
               .select('id, name, duration_mins, price, noshow_fee, payment_mode')
@@ -1117,7 +1128,11 @@
           }
           if (this.state.step === 1) this._render();
           else if (this.state.step === 2) this._render();
-        })();
+        })().catch(() => {
+          this._services = [];
+          this._hasAvailability = false;
+          this._render();
+        });
         return `
           <div class="bw-step-title">What service do you need?</div>
           <div class="bw-services" style="padding:16px 0;color:inherit;opacity:0.55;font-size:0.84rem;">Loading\u2026</div>
@@ -1234,7 +1249,10 @@
         (async () => {
           this._slots = await getAvailableSlots(this.businessId, this.state.date, this.state.service?.duration_mins || 0, this.state.partySize || 1, this._totalCapacity, this._businessMode);
           if (this.state.step === 3) this._render();
-        })();
+        })().catch(() => {
+          this._slots = [];
+          if (this.state.step === 3) this._render();
+        });
         return `
           <div class="bw-step-title">Available times &mdash; ${dateStr}</div>
           <div class="bw-times" style="grid-column:1/-1;padding:16px 0;opacity:0.55;font-size:0.84rem;">Loading times\u2026</div>
@@ -1601,7 +1619,7 @@
           const mode      = service.payment_mode || 'free';
           const hasFee    = Number(service?.noshow_fee ?? 0) > 0;
           const needsCard = mode !== 'free' || hasFee;
-          const dateISO   = date.toISOString().slice(0, 10);
+          const dateISO   = toLocalISO(date);
           const timeHHMM  = timeToHHMM(this.state.time);
 
           await sbReady;
@@ -1703,7 +1721,7 @@
           this._processing = false;
           const nextBtn2 = this.root.querySelector('#bw-next');
           const errEl2   = this.root.querySelector('#bw-confirm-err');
-          if (nextBtn2) { nextBtn2.disabled = false; nextBtn2.textContent = 'Book'; }
+          if (nextBtn2) { nextBtn2.disabled = false; nextBtn2.textContent = this._businessMode === 'restaurant' ? 'Reserve' : 'Book'; }
           if (errEl2)   { errEl2.textContent = err.message || 'Something went wrong. Please try again.'; errEl2.classList.add('visible'); }
         }
         return;
@@ -1722,6 +1740,10 @@
         this._customerId = null;
       }
       this.state.step--;
+      // Restaurants skip step 1 (service selection)
+      if (this._businessMode === 'restaurant' && this.state.step < 2) {
+        this.state.step = 2;
+      }
       this._render();
     }
 
@@ -1730,9 +1752,10 @@
       this._processing = false;
       destroyStripeSlots(this);
       this._customerId = null;
+      const isRest = this._businessMode === 'restaurant';
       this.state = {
-        step:      1,
-        service:   null,
+        step:      isRest ? 2 : 1,
+        service:   isRest && this._services?.length ? this._services[0] : null,
         date:      null,
         time:      null,
         contact:   {},
