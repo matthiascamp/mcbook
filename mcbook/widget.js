@@ -1368,8 +1368,8 @@
           ? `Your card will be saved and charged after your appointment. You may also be charged a ${feeStr} no-show fee if you don\u2019t show up and haven\u2019t let us know ahead of time.`
           : 'Your card will be saved and charged after your appointment.';
       } else {
-        // mode === 'free' && hasFee
-        modeNote = `Payment for the service itself is arranged directly with the business. Your card is saved \u2014 you may be charged a ${feeStr} no-show fee if you don\u2019t show up and haven\u2019t let us know ahead of time.`;
+        // mode === 'free' && hasFee — card only needed for no-show protection
+        modeNote = `Card is taken for a ${feeStr} no-show fee if you don\u2019t show up and haven\u2019t let us know ahead of time.`;
       }
 
       return `
