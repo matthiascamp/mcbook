@@ -196,7 +196,7 @@
 
     // a. Check override for this specific date
     const { data: override } = await sb.from('availability_overrides')
-      .select('is_available, start_time, end_time, blocked_from, blocked_to')
+      .select('*')
       .eq('client_id', businessId)
       .eq('date', dateISO)
       .limit(1)
