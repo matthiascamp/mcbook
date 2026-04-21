@@ -195,13 +195,13 @@
     await sbReady;
 
     // a. Check override for this specific date
-    const { data: override } = await sb.from('availability_overrides')
+    const { data: override, error: ovErr } = await sb.from('availability_overrides')
       .select('*')
       .eq('client_id', businessId)
       .eq('date', dateISO)
       .limit(1)
       .maybeSingle();
-    console.log('[MCBook-debug] override for ' + dateISO + ':', JSON.stringify(override));
+    console.log('[MCBook-debug] override:', JSON.stringify(override), 'error:', JSON.stringify(ovErr));
     if (override && !override.is_available) return [];
 
     // b. Availability rule for this day (used if no override times)
