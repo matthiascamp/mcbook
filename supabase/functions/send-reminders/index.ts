@@ -77,10 +77,11 @@ Deno.serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
-  // Find all bookings for tomorrow (UTC date)
-  const tomorrow = new Date()
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
-  const tomorrowISO = tomorrow.toISOString().slice(0, 10)
+  // Find all bookings for tomorrow in AEST (UTC+10)
+  const nowAEST = new Date(Date.now() + 10 * 60 * 60 * 1000)
+  const tomorrowAEST = new Date(nowAEST)
+  tomorrowAEST.setUTCDate(tomorrowAEST.getUTCDate() + 1)
+  const tomorrowISO = tomorrowAEST.toISOString().slice(0, 10)
 
   const { data: bookings, error } = await supabase
     .from('bookings')

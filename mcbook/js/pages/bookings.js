@@ -11,11 +11,12 @@ let dateFilter = ''
 let clientId = ''
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function todayISO() { return new Date().toISOString().slice(0, 10) }
+function localISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+function todayISO() { return localISO(new Date()) }
 function weekStartISO() {
   const d = new Date(); const day = d.getDay()
   d.setDate(d.getDate() - day + (day === 0 ? -6 : 1))
-  return d.toISOString().slice(0, 10)
+  return localISO(d)
 }
 function monthStartISO() {
   const d = new Date()

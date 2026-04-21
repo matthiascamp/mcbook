@@ -3,14 +3,15 @@ import { getSession } from '../auth.js'
 import { setTopbarDate, loadSidebarUser, esc } from '../ui.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function todayISO() { return new Date().toISOString().slice(0, 10) }
+function localISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
+function todayISO() { return localISO(new Date()) }
 function yesterdayISO() {
-  const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10)
+  const d = new Date(); d.setDate(d.getDate() - 1); return localISO(d)
 }
 function weekStartISO() {
   const d = new Date(); const day = d.getDay()
   d.setDate(d.getDate() - day + (day === 0 ? -6 : 1))
-  return d.toISOString().slice(0, 10)
+  return localISO(d)
 }
 function monthStartISO() {
   const d = new Date()
@@ -178,7 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i)); return d
   })
-  const sevenAgo = days[0].toISOString().slice(0, 10)
+  const sevenAgo = localISO(days[0])
 
   const { data: chartRows } = await supabase.from('bookings')
     .select('date, services(price)')
@@ -191,12 +192,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     for (const b of chartRows)
       byDate[b.date] = (byDate[b.date] || 0) + Number(b.services?.price || 0)
 
-    const maxRev = Math.max(...days.map(d => byDate[d.toISOString().slice(0, 10)] || 0), 1)
+    const maxRev = Math.max(...days.map(d => byDate[localISO(d)] || 0), 1)
     const container = chartPanel.querySelector('.chart-placeholder')
     if (container) {
       container.querySelectorAll('.chart-bar-row').forEach(el => el.remove())
       for (const d of days) {
-        const iso = d.toISOString().slice(0, 10)
+        const iso = localISO(d)
         const rev = byDate[iso] || 0
         const pct = Math.round((rev / maxRev) * 100)
         const row = document.createElement('div')
