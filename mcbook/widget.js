@@ -201,6 +201,7 @@
       .eq('date', dateISO)
       .limit(1)
       .maybeSingle();
+    console.log('[MCBook-debug] override for ' + dateISO + ':', JSON.stringify(override));
     if (override && !override.is_available) return [];
 
     // b. Availability rule for this day (used if no override times)
@@ -277,6 +278,7 @@
       breakStart = bfH * 60 + bfM;
       breakEnd   = btH * 60 + btM;
     }
+    console.log('[MCBook-debug] breakStart:', breakStart, 'breakEnd:', breakEnd);
 
     const durMins = serviceDurationMins > 0 ? serviceDurationMins : slotMins;
 
