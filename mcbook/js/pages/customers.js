@@ -2,6 +2,21 @@ import { supabase } from '../supabase.js'
 import { getSession } from '../auth.js'
 import { setTopbarDate, loadSidebarUser, esc } from '../ui.js'
 
+// ── Contact links builder ────────────────────────────────────────────────────
+function contactHtml(phone, email) {
+  if (!phone && !email) return ''
+  let html = '<div style="display:flex;gap:6px;justify-content:flex-end;">'
+  if (phone) {
+    const p = esc(phone)
+    html += `<a href="tel:${p}" title="Call" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.09);background:rgba(74,222,128,0.07);color:#4ade80;text-decoration:none;font-size:0.9rem;transition:0.2s;">&#128222;</a>`
+    html += `<a href="sms:${p}" title="Text" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.09);background:rgba(59,130,246,0.07);color:#60a5fa;text-decoration:none;font-size:0.9rem;transition:0.2s;">&#128172;</a>`
+  }
+  if (email) {
+    html += `<a href="mailto:${esc(email)}" title="Email" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.09);background:rgba(245,158,11,0.07);color:#fbbf24;text-decoration:none;font-size:0.9rem;transition:0.2s;">&#9993;</a>`
+  }
+  return html + '</div>'
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function monthStartISO() {
   const d = new Date()
@@ -204,6 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="modal-row"><span class="modal-label">Email</span><span class="modal-val">${esc(cust.email ?? '')}</span></div>
         <div class="modal-row"><span class="modal-label">Phone</span><span class="modal-val">${esc(cust.phone ?? '\u2014')}</span></div>
         <div class="modal-row"><span class="modal-label">Customer since</span><span class="modal-val">${MONTHS[since.getMonth()]} ${since.getFullYear()}</span></div>
+        <div class="modal-row" style="padding-top:8px;"><span class="modal-label">Contact</span><span class="modal-val">${contactHtml(cust.phone, cust.email)}</span></div>
       </div>
 
       <div class="modal-section">

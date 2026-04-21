@@ -332,6 +332,96 @@
     .chart-bar { height: 100%; background: var(--accent); border-radius: 3px; opacity: 0.75; }
     .chart-val { font-size: 0.7rem; font-weight: 600; color: var(--text-2); min-width: 38px; text-align: right; }
 
+    /* ── Add Booking modal ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(3px);
+      z-index: 300;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .modal-title { font-size: 0.9rem; font-weight: 700; }
+    .modal-close {
+      width: 28px; height: 28px;
+      background: transparent; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-2); font-size: 1rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: border-color var(--ease), color var(--ease);
+    }
+    .modal-close:hover { border-color: var(--accent); color: var(--accent); }
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .modal-field { display: flex; flex-direction: column; gap: 5px; }
+    .modal-label {
+      font-size: 0.72rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-2);
+    }
+    .modal-input, .modal-select {
+      padding: 9px 13px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 0.85rem; font-family: inherit;
+      color: var(--text); background: var(--surface-2);
+      outline: none; transition: border-color var(--ease);
+    }
+    .modal-input:focus, .modal-select:focus { border-color: var(--accent); }
+    .modal-input::placeholder { color: var(--text-2); opacity: 0.6; }
+    .modal-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 10px;
+    }
+    .modal-btn {
+      padding: 9px 20px; border-radius: 50px;
+      font-size: 0.85rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: filter var(--ease), box-shadow var(--ease);
+    }
+    .modal-btn-primary {
+      background: var(--accent); color: #050a08; border: none;
+    }
+    .modal-btn-primary:hover { filter: brightness(1.08); box-shadow: 0 0 24px rgba(74,222,128,0.3); }
+    .modal-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .modal-btn-secondary {
+      background: transparent; color: var(--text-2); border: 1px solid var(--border);
+    }
+    .modal-btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .modal-hint { font-size: 0.72rem; color: var(--text-2); margin-top: 2px; }
+    .btn-add-booking {
+      padding: 6px 16px;
+      background: var(--accent); color: #050a08;
+      border: none; border-radius: 50px;
+      font-size: 0.78rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; white-space: nowrap;
+      transition: filter var(--ease), box-shadow var(--ease);
+    }
+    .btn-add-booking:hover { filter: brightness(1.08); box-shadow: 0 0 16px rgba(74,222,128,0.25); }
+
+    /* ── Contact action buttons ── */
+    .contact-actions { display: flex; gap: 6px; margin-left: auto; }
+    .contact-btn {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-2);
+      font-size: 0.8rem; cursor: pointer; text-decoration: none;
+      transition: border-color var(--ease), color var(--ease), background var(--ease);
+    }
+    .contact-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+    .contact-btn[title]::after { content: none; }
+
     /* Responsive */
     /* ── Hamburger + sidebar overlay ── */
     .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; flex-shrink: 0; }
@@ -405,6 +495,7 @@
       <span class="topbar-title">Dashboard</span>
       <div class="topbar-actions">
         <span class="topbar-date">Monday, 7 April 2025</span>
+        <button class="btn-add-booking" id="btn-add-booking">+ New Booking</button>
       </div>
     </header>
 
@@ -462,6 +553,7 @@
           <div class="panel-header">
             <span class="panel-title">Today's Schedule</span>
             <span class="panel-badge"></span>
+            <button class="btn-add-booking" id="btn-add-booking-panel" style="padding:4px 12px;font-size:0.72rem;">+ Add</button>
           </div>
 
         </div>
@@ -488,6 +580,59 @@
       </div>
 
     </main>
+  </div>
+
+  <!-- Add Booking Modal -->
+  <div class="modal-backdrop" id="add-booking-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="add-booking-title">
+      <div class="modal-header">
+        <span class="modal-title" id="add-booking-title">New Booking</span>
+        <button class="modal-close" id="add-booking-close" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label class="modal-label">Customer</label>
+          <select class="modal-select" id="ab-customer">
+            <option value="">-- Select existing customer --</option>
+          </select>
+          <div class="modal-hint">Or enter new customer details below</div>
+        </div>
+        <div class="modal-row-2">
+          <div class="modal-field">
+            <label class="modal-label">Name</label>
+            <input type="text" class="modal-input" id="ab-name" placeholder="Customer name">
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Phone</label>
+            <input type="tel" class="modal-input" id="ab-phone" placeholder="Phone number">
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Email</label>
+          <input type="email" class="modal-input" id="ab-email" placeholder="customer@email.com">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Service</label>
+          <select class="modal-select" id="ab-service">
+            <option value="">-- Select service --</option>
+          </select>
+        </div>
+        <div class="modal-row-2">
+          <div class="modal-field">
+            <label class="modal-label">Date</label>
+            <input type="date" class="modal-input" id="ab-date">
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Time</label>
+            <select class="modal-select" id="ab-time"></select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" id="ab-cancel">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="ab-save">Create Booking</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="./js/pages/dashboard.js"></script>
