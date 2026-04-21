@@ -195,13 +195,12 @@
     await sbReady;
 
     // a. Check override for this specific date
-    const { data: override, error: ovErr } = await sb.from('availability_overrides')
+    const { data: override } = await sb.from('availability_overrides')
       .select('*')
       .eq('client_id', businessId)
       .eq('date', dateISO)
       .limit(1)
       .maybeSingle();
-    console.log('[MCBook-debug] override:', JSON.stringify(override), 'error:', JSON.stringify(ovErr));
     if (override && !override.is_available) return [];
 
     // b. Availability rule for this day (used if no override times)
@@ -278,7 +277,6 @@
       breakStart = bfH * 60 + bfM;
       breakEnd   = btH * 60 + btM;
     }
-    console.log('[MCBook-debug] breakStart:', breakStart, 'breakEnd:', breakEnd);
 
     const durMins = serviceDurationMins > 0 ? serviceDurationMins : slotMins;
 
@@ -288,11 +286,9 @@
 
       // Skip slots that fall inside the blocked period
       if (breakStart >= 0 && cur >= breakStart && cur < breakEnd) {
-        console.log('[MCBook-debug] SKIPPING slot at', cur, 'mins (break', breakStart, '-', breakEnd, ')');
         cur += slotMins;
         continue;
       }
-      console.log('[MCBook-debug] SHOWING slot at', cur, 'mins');
 
       const h = Math.floor(cur / 60);
       const m = cur % 60;

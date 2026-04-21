@@ -165,7 +165,7 @@ function fmtAdvDate(dateStr) {
 
 async function loadAdvancedCalendar() {
   const today = new Date(); today.setHours(0,0,0,0)
-  const todayISO = today.toISOString().slice(0,10)
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
 
   // Fetch existing overrides
   const { data } = await supabase.from('availability_overrides')
@@ -206,7 +206,7 @@ function renderAdvancedCalendar() {
   for (let i = 0; i < DAYS_SHOWN; i++) {
     const d = new Date(startDay)
     d.setDate(d.getDate() + i)
-    const dateStr = d.toISOString().slice(0,10)
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
     const isToday = d.getTime() === today.getTime()
     const isPast  = d < today
     const dayDow  = d.getDay()
