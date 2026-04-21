@@ -288,9 +288,11 @@
 
       // Skip slots that fall inside the blocked period
       if (breakStart >= 0 && cur >= breakStart && cur < breakEnd) {
+        console.log('[MCBook-debug] SKIPPING slot at', cur, 'mins (break', breakStart, '-', breakEnd, ')');
         cur += slotMins;
         continue;
       }
+      console.log('[MCBook-debug] SHOWING slot at', cur, 'mins');
 
       const h = Math.floor(cur / 60);
       const m = cur % 60;
