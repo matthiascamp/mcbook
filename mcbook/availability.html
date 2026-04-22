@@ -378,8 +378,13 @@
       .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 200; }
       .sidebar.open { transform: none; }
       .main { margin-left: 0; }
-      .week-row { grid-template-columns: 90px 1fr; gap: 10px; }
-      .week-row .time-range { flex-wrap: wrap; gap: 6px; }
+      .week-row {
+        display: flex; flex-direction: column; align-items: stretch;
+        gap: 6px; padding: 12px 0;
+      }
+      .week-row .day-label { justify-content: space-between; }
+      .week-row .time-range { padding-left: 48px; }
+      .week-row .day-closed { padding-left: 48px; }
       .time-select { font-size: 0.78rem; padding: 5px 6px; }
       .adv-grid { grid-template-columns: repeat(7, 1fr); gap: 4px; }
       .adv-day { min-height: 48px; padding: 6px 2px; }
@@ -390,7 +395,6 @@
     }
     @media (max-width: 480px) {
       .content { padding: 16px; }
-      .week-row { grid-template-columns: 80px 1fr; gap: 8px; }
     }
   </style>
 </head>
