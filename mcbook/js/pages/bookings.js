@@ -2,7 +2,9 @@ import { supabase } from '../supabase.js'
 import { getSession } from '../auth.js'
 import { setTopbarDate, loadSidebarUser, esc } from '../ui.js'
 
-const CHARGE_NOSHOW_URL = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/charge-noshow'
+const CHARGE_NOSHOW_URL      = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/charge-noshow'
+const CONFIRM_BOOKING_URL    = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/confirm-booking'
+const NOTIFY_RESCHEDULE_URL  = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/notify-reschedule'
 const PAGE_SIZE = 10
 let currentPage = 1
 let cancelledPage = 1
@@ -635,6 +637,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
+    fetch(NOTIFY_RESCHEDULE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId: rescheduleBookingId }),
+    }).catch(() => {})
+
     closeReschedule()
     await loadBookings()
   })
@@ -741,11 +749,18 @@ document.addEventListener('DOMContentLoaded', async () => {
           customerId = newCust.id
         }
       }
-      const { error: bookErr } = await supabase.from('bookings').insert({
+      const { data: newBooking, error: bookErr } = await supabase.from('bookings').insert({
         client_id: clientId, customer_id: customerId, service_id: serviceId,
         date, time, status: 'scheduled', payment_status: 'none'
-      })
+      }).select('id').single()
       if (bookErr) { alert('Could not create booking: ' + bookErr.message); return }
+      if (newBooking?.id) {
+        fetch(CONFIRM_BOOKING_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: newBooking.id }),
+        }).catch(() => {})
+      }
       closeAddBooking()
       currentPage = 1; await loadBookings()
     } catch (err) { alert('Error creating booking: ' + err.message) }
