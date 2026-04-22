@@ -128,7 +128,7 @@ async function checkConflict(clientIdVal, date, time, excludeBookingId) {
 async function loadBookings() {
   const today = todayISO()
   let q = supabase.from('bookings')
-    .select('id, date, time, status, party_size, customers(name, email, phone), services(name, payment_mode)', { count: 'exact' })
+    .select('id, date, time, status, party_size, customers(name, email, phone), services(name, payment_mode, noshow_fee)', { count: 'exact' })
     .eq('client_id', clientId)
     .neq('status', 'cancelled')
     .order('date', { ascending: false })
@@ -148,13 +148,14 @@ async function loadBookings() {
   for (const b of data ?? []) {
     const name = b.customers?.name ?? ''
     const isScheduled = b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'pending_payment'
-    const isChargeable = b.services?.payment_mode === 'noshow_only' || b.services?.payment_mode === 'after'
+    const isChargeable = b.services?.payment_mode === 'noshow_only' || b.services?.payment_mode === 'after' || Number(b.services?.noshow_fee) > 0
     const statusLabel = b.status === 'pending_payment' ? 'Scheduled' : capitalize(b.status.replace('_', ' '))
     const statusCls   = b.status === 'pending_payment' ? 'scheduled' : b.status
-    const payTag = b.services?.payment_mode === 'free'
-      ? '<div class="pay-tag">Pay externally</div>'
-      : b.services?.payment_mode
-        ? '<div class="pay-tag">Card on file</div>'
+    const hasCardOnFile = b.services?.payment_mode !== 'free' || Number(b.services?.noshow_fee) > 0
+    const payTag = hasCardOnFile
+      ? '<div class="pay-tag">Card on file</div>'
+      : b.services?.payment_mode === 'free'
+        ? '<div class="pay-tag">Pay externally</div>'
         : ''
     const tr = document.createElement('tr')
     tr.dataset.bookingId = b.id
@@ -450,7 +451,7 @@ async function viewBooking(bookingId) {
       <div class="modal-section-title">Payment</div>
       <div class="modal-row"><span class="modal-label">Mode</span><span class="modal-val">${esc(payModeLabel)}</span></div>
       ${service.price ? `<div class="modal-row"><span class="modal-label">Price</span><span class="modal-val">$${service.price}</span></div>` : ''}
-      ${service.noshow_fee && service.payment_mode !== 'free' ? `<div class="modal-row"><span class="modal-label">No-show fee</span><span class="modal-val">$${service.noshow_fee}</span></div>` : ''}
+      ${Number(service.noshow_fee) > 0 ? `<div class="modal-row"><span class="modal-label">No-show fee</span><span class="modal-val">$${service.noshow_fee}</span></div>` : ''}
       <div class="modal-row"><span class="modal-label">Payment status</span><span class="modal-val">${payStatusLabel}</span></div>
     </div>
     ${(b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'pending_payment') ? `

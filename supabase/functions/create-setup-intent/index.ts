@@ -21,8 +21,12 @@
  *   SUPABASE_SERVICE_ROLE_KEY
  */
 
-import Stripe from 'https://esm.sh/stripe@13.10.0?target=deno&no-check'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2?target=deno'
+// @ts-ignore
+import Stripe from 'npm:stripe@13'
+// @ts-ignore
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
+declare const Deno: { serve: (h: (r: Request) => Promise<Response>) => void; env: { get: (k: string) => string | undefined } }
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

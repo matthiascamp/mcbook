@@ -6,23 +6,6 @@
 (function () {
   'use strict';
 
-  // ─── Mock data (replace with real API calls later) ────────────────────────
-  const MOCK_SERVICES = [
-    { id: 1, name: 'Haircut',          duration: '30 min', price: '$35',  nosho: '$25' },
-    { id: 2, name: 'Color Treatment',  duration: '2 hr',   price: '$120', nosho: '$60' },
-    { id: 3, name: 'Beard Trim',       duration: '20 min', price: '$25',  nosho: '$15' },
-    { id: 4, name: 'Full Styling',     duration: '1 hr',   price: '$80',  nosho: '$40' },
-  ];
-
-  // Time slots available each day
-  const MOCK_TIMES = [
-    '9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
-    '1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM',
-  ];
-
-  // Days blocked (0 = Sunday, 6 = Saturday) — Sundays unavailable in demo
-  const BLOCKED_WEEKDAYS = [0];
-
   // ─── Supabase client (self-contained, no import from js/supabase.js) ────────
   const SUPABASE_URL      = 'https://uijudgnqawtvjyjuyuwo.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpanVkZ25xYXd0dmp5anV5dXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MjI1NDQsImV4cCI6MjA5MTA5ODU0NH0.MkIJL-GmeAzUsyinykQWa0-4mjAWTf-WEuZelLouDYg';
