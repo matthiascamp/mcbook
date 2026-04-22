@@ -5,6 +5,7 @@ import { setTopbarDate, loadSidebarUser, esc } from '../ui.js'
 const CHARGE_NOSHOW_URL      = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/charge-noshow'
 const CONFIRM_BOOKING_URL    = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/confirm-booking'
 const NOTIFY_RESCHEDULE_URL  = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/notify-reschedule'
+const NOTIFY_CANCEL_URL      = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/notify-cancellation'
 const PAGE_SIZE = 10
 let currentPage = 1
 let cancelledPage = 1
@@ -310,6 +311,12 @@ async function cancelBooking(bookingId, buttonEl) {
     alert('Failed to cancel booking: ' + error.message)
     return
   }
+
+  fetch(NOTIFY_CANCEL_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookingId }),
+  }).catch(() => {})
 
   const tr   = buttonEl.closest('tr')
   const pill = tr?.querySelector('.status-pill')
