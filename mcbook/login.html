@@ -433,6 +433,36 @@
         </form>
       </div>
 
+      <!-- Set New Password form (shown after clicking email link) -->
+      <div id="form-newpass" style="display:none;">
+        <h1 class="login-title">Set new password</h1>
+        <p class="login-subtitle">Enter your new password below.</p>
+        <div class="login-msg" id="newpass-msg"></div>
+        <form id="newpassForm">
+          <div class="field">
+            <label for="newpass-password">New Password</label>
+            <div class="field-wrap">
+              <input type="password" id="newpass-password" placeholder="••••••••" autocomplete="new-password" required minlength="6">
+              <button type="button" class="btn-eye" aria-label="Toggle password visibility" data-target="newpass-password">
+                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="newpass-confirm">Confirm Password</label>
+            <div class="field-wrap">
+              <input type="password" id="newpass-confirm" placeholder="••••••••" autocomplete="new-password" required minlength="6">
+              <button type="button" class="btn-eye" aria-label="Toggle password visibility" data-target="newpass-confirm">
+                <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn-login">Update password</button>
+        </form>
+      </div>
+
 
     </div>
 
@@ -447,6 +477,7 @@
 
   <script type="module">
     import { signIn, resetPassword, ensureClientProfile } from './js/auth.js'
+    import { supabase } from './js/supabase.js'
 
     /* ── Password visibility toggles ── */
     document.querySelectorAll('.btn-eye').forEach(btn => {
@@ -460,16 +491,20 @@
     })
 
     /* ── Tab switching ── */
-    const tabSignIn  = document.getElementById('tab-signin')
-    const tabReset   = document.getElementById('tab-reset')
-    const formSignIn = document.getElementById('form-signin')
-    const formReset  = document.getElementById('form-reset')
+    const tabSignIn   = document.getElementById('tab-signin')
+    const tabReset    = document.getElementById('tab-reset')
+    const formSignIn  = document.getElementById('form-signin')
+    const formReset   = document.getElementById('form-reset')
+    const formNewpass = document.getElementById('form-newpass')
+    const tabBar      = document.querySelector('.login-tabs')
 
     function showTab(active) {
       tabSignIn.classList.toggle('active', active === 'signin')
       tabReset.classList.toggle('active',  active === 'reset')
-      formSignIn.style.display = active === 'signin' ? '' : 'none'
-      formReset.style.display  = active === 'reset'  ? '' : 'none'
+      formSignIn.style.display  = active === 'signin'  ? '' : 'none'
+      formReset.style.display   = active === 'reset'   ? '' : 'none'
+      formNewpass.style.display = active === 'newpass'  ? '' : 'none'
+      tabBar.style.display      = active === 'newpass'  ? 'none' : ''
     }
 
     tabSignIn.addEventListener('click', () => showTab('signin'))
@@ -478,6 +513,53 @@
     // Hash-based initial tab (treat #signup as signin — signup is admin-only)
     if (location.hash === '#reset') showTab('reset')
     else showTab('signin')
+
+    /* ── Detect password recovery redirect ── */
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        showTab('newpass')
+      }
+    })
+
+    /* ── Set New Password ── */
+    document.getElementById('newpassForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const msg     = document.getElementById('newpass-msg')
+      const btn     = e.target.querySelector('button[type="submit"]')
+      const pass    = document.getElementById('newpass-password').value
+      const confirm = document.getElementById('newpass-confirm').value
+
+      msg.className = 'login-msg'
+
+      if (pass !== confirm) {
+        msg.textContent = 'Passwords do not match.'
+        msg.classList.add('error')
+        return
+      }
+
+      if (pass.length < 6) {
+        msg.textContent = 'Password must be at least 6 characters.'
+        msg.classList.add('error')
+        return
+      }
+
+      btn.disabled = true
+      btn.textContent = 'Updating…'
+
+      const { error } = await supabase.auth.updateUser({ password: pass })
+
+      if (error) {
+        msg.textContent = error.message
+        msg.classList.add('error')
+        btn.disabled = false
+        btn.textContent = 'Update password'
+        return
+      }
+
+      msg.textContent = '✓ Password updated — redirecting to dashboard…'
+      msg.classList.add('success')
+      setTimeout(() => { window.location.href = 'dashboard.html' }, 1500)
+    })
 
     /* ── Sign In ── */
     document.getElementById('signinForm').addEventListener('submit', async (e) => {
