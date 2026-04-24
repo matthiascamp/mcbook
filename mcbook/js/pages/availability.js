@@ -327,6 +327,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const breakFromVal = document.getElementById('adv-break-from')?.value
     const breakToVal   = document.getElementById('adv-break-to')?.value
 
+    if (mode === 'custom' && to24h(startVal) >= to24h(endVal)) {
+      alert('End time must be after start time.'); return
+    }
+    if (mode === 'break' && to24h(breakFromVal) >= to24h(breakToVal)) {
+      alert('Break end time must be after break start time.'); return
+    }
     if (mode === 'default') {
       const ov = advOverrides[advSelectedDate]
       if (ov?.id) await supabase.from('availability_overrides').delete().eq('id', ov.id)
@@ -364,26 +370,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Save weekly schedule
   saveBtns[0]?.addEventListener('click', async () => {
+    const DAYNAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
     const rows = []
+    let invalid = false
     document.querySelectorAll('.week-row').forEach((row, i) => {
       const checkbox = row.querySelector('input[type="checkbox"]')
       const selects  = row.querySelectorAll('.time-select')
+      const startVal = selects[0] ? to24h(selects[0].value) : '09:00'
+      const endVal   = selects[1] ? to24h(selects[1].value) : '17:00'
+      if (checkbox.checked && startVal >= endVal) {
+        alert(`${DAYNAMES[i]}: end time must be after start time.`)
+        invalid = true
+      }
       rows.push({
         client_id:   uid,
         day_of_week: DOW[i],
         enabled:     checkbox.checked,
-        start_time:  selects[0] ? to24h(selects[0].value) : '09:00',
-        end_time:    selects[1] ? to24h(selects[1].value) : '17:00'
+        start_time:  startVal,
+        end_time:    endVal
       })
     })
+    if (invalid) return
+    saveBtns[0].disabled = true
+    saveBtns[0].textContent = 'Saving…'
     const { error } = await supabase.from('availability_rules')
       .upsert(rows, { onConflict: 'client_id,day_of_week' })
+    saveBtns[0].disabled = false
+    saveBtns[0].textContent = 'Save Changes'
     if (!error) alert('Schedule saved.')
     else console.error(error)
   })
 
   // Save booking settings
   saveBtns[1]?.addEventListener('click', async () => {
+    saveBtns[1].disabled = true
+    saveBtns[1].textContent = 'Saving…'
     const slotRows   = document.querySelectorAll('.slot-row')
     const slotSel    = slotRows[0]?.querySelector('select')
     const advanceSel = slotRows[1]?.querySelector('select')
@@ -397,12 +418,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       min_notice_hours:     parseInt(noticeSel?.value  || '2'),
       require_payment:      payToggle ? (payToggle.checked && !payToggle.disabled) : false,
     }, { onConflict: 'client_id' })
-    if (error) { console.error(error); return }
+    if (error) { console.error(error); saveBtns[1].disabled = false; saveBtns[1].textContent = 'Save Changes'; return }
     // For restaurants, keep the Table Booking service duration in sync
     const { data: clientData } = await supabase.from('clients').select('business_mode').eq('id', uid).maybeSingle()
     if (clientData?.business_mode === 'restaurant') {
       await supabase.from('services').update({ duration_mins: slotMins }).eq('client_id', uid).eq('active', true)
     }
+    saveBtns[1].disabled = false
+    saveBtns[1].textContent = 'Save Changes'
     alert('Settings saved.')
   })
 

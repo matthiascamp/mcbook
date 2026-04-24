@@ -148,6 +148,11 @@ async function loadBookings() {
 
   const tbody = document.querySelector('.data-table tbody')
   tbody.innerHTML = ''
+  if (!data || data.length === 0) {
+    const tr = document.createElement('tr')
+    tr.innerHTML = `<td colspan="6" style="text-align:center;padding:40px 16px;color:#8b8b9e;font-size:0.88rem;">No bookings found${statusFilter || dateFilter ? ' for the selected filters.' : '.'}</td>`
+    tbody.appendChild(tr)
+  }
   for (const b of data ?? []) {
     const name = b.customers?.name ?? ''
     const isScheduled = b.status === 'scheduled' || b.status === 'confirmed' || b.status === 'pending_payment'

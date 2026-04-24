@@ -192,6 +192,16 @@
 
       if (businessName) document.title = `Book — ${businessName}`
 
+      if (!businessName) {
+        root.innerHTML = `
+          <div class="error-state">
+            <div class="error-icon">&#9888;&#65039;</div>
+            <div class="error-title">Business not found</div>
+            <div class="error-sub">We couldn't find a business with this ID. The link may be outdated or incorrect.</div>
+          </div>`
+        return
+      }
+
       // ── Render page ───────────────────────────────────────────────────────────
       root.innerHTML = `
         <div class="page-header">
