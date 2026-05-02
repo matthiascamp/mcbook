@@ -118,12 +118,16 @@ async function loadBookingSettings() {
   const slotSel    = slotRows[0]?.querySelector('select')
   const advanceSel = slotRows[1]?.querySelector('select')
   const noticeSel  = slotRows[2]?.querySelector('select')
+  const cancelSel  = document.getElementById('cancel-deadline-sel')
   const payToggle  = document.getElementById('toggle-require-payment')
 
   if (slotSel)    slotSel.value    = `${data.slot_duration_mins}`
-  if (advanceSel) advanceSel.value = `${data.advance_window_weeks} weeks`
+  if (advanceSel) advanceSel.value = data.advance_window_weeks === 1
+    ? '1 week' : `${data.advance_window_weeks} weeks`
   if (noticeSel)  noticeSel.value  = data.min_notice_hours === 1
     ? '1 hour' : `${data.min_notice_hours} hours`
+  if (cancelSel && data.min_cancel_hours != null)
+    cancelSel.value = `${data.min_cancel_hours}`
   if (payToggle)
     payToggle.checked = data.require_payment === true
 
@@ -409,6 +413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const slotSel    = slotRows[0]?.querySelector('select')
     const advanceSel = slotRows[1]?.querySelector('select')
     const noticeSel  = slotRows[2]?.querySelector('select')
+    const cancelSel  = document.getElementById('cancel-deadline-sel')
     const payToggle  = document.getElementById('toggle-require-payment')
     const slotMins   = parseInt(slotSel?.value || '60')
     const { error } = await supabase.from('booking_settings').upsert({
@@ -416,6 +421,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       slot_duration_mins:   slotMins,
       advance_window_weeks: parseInt(advanceSel?.value || '4'),
       min_notice_hours:     parseInt(noticeSel?.value  || '2'),
+      min_cancel_hours:     parseInt(cancelSel?.value  || '4'),
       require_payment:      payToggle ? (payToggle.checked && !payToggle.disabled) : false,
     }, { onConflict: 'client_id' })
     if (error) { console.error(error); saveBtns[1].disabled = false; saveBtns[1].textContent = 'Save Changes'; return }

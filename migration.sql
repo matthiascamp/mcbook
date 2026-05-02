@@ -60,3 +60,20 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS seating_area_id UUID
 -- GROUP BY c.id, c.business_name, bs.total_capacity
 -- HAVING bs.total_capacity - COALESCE(SUM(b.party_size), 0) > 0
 -- ORDER BY available_covers DESC;
+
+-- ── 9. Cancellation deadline on booking_settings ────────────────────────────
+ALTER TABLE booking_settings ADD COLUMN IF NOT EXISTS min_cancel_hours INTEGER DEFAULT 4;
+
+-- ── 10. SMS templates table ─────────────────────────────────────────────────
+-- Per-client custom SMS message templates. Falls back to hardcoded defaults
+-- when no row exists for a given type.
+-- Supported placeholders: {first_name}, {service}, {business}, {date}, {time}, {cancel_link}
+CREATE TABLE IF NOT EXISTS sms_templates (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id  UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  type       TEXT NOT NULL CHECK (type IN ('confirmation', 'reminder', 'cancellation', 'reschedule')),
+  template   TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(client_id, type)
+);

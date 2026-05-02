@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: booking, error } = await supabase
       .from('bookings')
-      .select('id, date, time, clients(business_name), customers(name, phone), services(name)')
+      .select('id, date, time, client_id, clients(business_name), customers(name, phone), services(name)')
       .eq('id', bookingId)
       .single()
 
@@ -91,10 +91,18 @@ Deno.serve(async (req: Request) => {
     const timeStr   = fmtTime((booking as any).time)
     const firstName = (customer?.name || 'there').split(' ')[0]
 
-    const message = [
-      `Hi ${firstName}, your ${service?.name ?? 'appointment'} at ${client?.business_name ?? 'the business'} on ${dateStr} at ${timeStr} has been cancelled.`,
-      `If you believe this is an error, please contact the business directly.`,
-    ].join('\n')
+    // Check for custom SMS template
+    let template = `Hi {first_name}, your {service} at {business} on {date} at {time} has been cancelled.\nIf you believe this is an error, please contact the business directly.`
+    const { data: tpl } = await supabase.from('sms_templates')
+      .select('template').eq('client_id', (booking as any).client_id).eq('type', 'cancellation').maybeSingle()
+    if (tpl?.template) template = tpl.template
+
+    const message = template
+      .replace(/\{first_name\}/g, firstName)
+      .replace(/\{service\}/g, service?.name ?? 'appointment')
+      .replace(/\{business\}/g, client?.business_name ?? 'the business')
+      .replace(/\{date\}/g, dateStr)
+      .replace(/\{time\}/g, timeStr)
 
     await sendTwilioSMS(phone, message)
 

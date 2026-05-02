@@ -136,6 +136,51 @@
     .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
     .sidebar-overlay.active { display: block; }
 
+    /* ── SMS Templates ── */
+    .sms-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+    .sms-tab {
+      padding: 10px 16px; font-family: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--text-2); background: none; border: none; border-bottom: 2px solid transparent;
+      cursor: pointer; transition: color var(--ease), border-color var(--ease);
+    }
+    .sms-tab:hover { color: var(--text); }
+    .sms-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .sms-panel { display: none; padding: 20px; }
+    .sms-panel.active { display: block; }
+    .sms-textarea {
+      width: 100%; min-height: 100px; padding: 12px 14px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 0.84rem;
+      line-height: 1.6; resize: vertical; outline: none;
+      transition: border-color var(--ease), box-shadow var(--ease);
+    }
+    .sms-textarea:hover { border-color: rgba(74,222,128,0.3); }
+    .sms-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,222,128,0.08); }
+    .sms-placeholders {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+    }
+    .sms-placeholder {
+      padding: 3px 9px; font-size: 0.7rem; font-family: monospace;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--accent); cursor: pointer;
+      transition: background var(--ease);
+    }
+    .sms-placeholder:hover { background: var(--accent-bg); }
+    .sms-preview-label {
+      font-size: 0.7rem; font-weight: 600; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 0 6px;
+    }
+    .sms-preview {
+      padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-2);
+      line-height: 1.6; white-space: pre-wrap;
+    }
+    .sms-char-count {
+      font-size: 0.68rem; color: var(--text-3); margin-top: 6px; text-align: right;
+    }
+    .sms-char-count.warn { color: #f59e0b; }
+    .sms-char-count.over { color: var(--danger); }
+
     /* ── Danger zone ── */
     .danger-zone {
       background: var(--surface); border: 1px solid rgba(239,68,68,0.25);
@@ -381,6 +426,135 @@
     document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-AU', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     })
+
+    // ── SMS Templates ─────────────────────────────────────────────────────────
+    const SMS_TYPES = ['confirmation', 'reminder', 'cancellation', 'reschedule']
+    const SMS_DEFAULTS = {
+      confirmation: `Hi {first_name}! Your {service} at {business} is confirmed.\n📅 {date} at {time}\nTo cancel: {cancel_link}`,
+      reminder:     `Hi {first_name}! Reminder: your {service} at {business} is tomorrow.\n📅 {date} at {time}\nNeed to cancel? {cancel_link}`,
+      cancellation: `Hi {first_name}, your {service} at {business} on {date} at {time} has been cancelled.\nIf you believe this is an error, please contact the business directly.`,
+      reschedule:   `Hi {first_name}! Your {service} at {business} has been rescheduled.\n📅 New time: {date} at {time}\nTo cancel: {cancel_link}`,
+    }
+    const SMS_SAMPLE = {
+      '{first_name}': 'Sarah',
+      '{service}': 'Haircut & Blowdry',
+      '{business}': bizName || 'Your Business',
+      '{date}': 'Thursday, 15 May',
+      '{time}': '2:00 PM',
+      '{cancel_link}': 'https://matthiasdev.com/mcbook/cancel.html?id=...',
+    }
+
+    function smsPreview(template) {
+      let text = template
+      for (const [k, v] of Object.entries(SMS_SAMPLE)) {
+        text = text.replaceAll(k, v)
+      }
+      return text
+    }
+
+    function smsCharCount(type) {
+      const ta = document.getElementById(`sms-${type}`)
+      const countEl = document.getElementById(`sms-${type}-count`)
+      if (!ta || !countEl) return
+      const expanded = smsPreview(ta.value)
+      const len = expanded.length
+      countEl.textContent = `~${len} characters (${len <= 160 ? '1 SMS' : Math.ceil(len / 153) + ' SMS segments'})`
+      countEl.className = 'sms-char-count' + (len > 320 ? ' over' : len > 160 ? ' warn' : '')
+    }
+
+    function smsUpdatePreview(type) {
+      const ta = document.getElementById(`sms-${type}`)
+      const previewEl = document.getElementById(`sms-${type}-preview`)
+      if (!ta || !previewEl) return
+      previewEl.textContent = smsPreview(ta.value)
+      smsCharCount(type)
+    }
+
+    // Tab switching
+    document.querySelectorAll('.sms-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.sms-tab').forEach(t => t.classList.remove('active'))
+        document.querySelectorAll('.sms-panel').forEach(p => p.classList.remove('active'))
+        tab.classList.add('active')
+        document.querySelector(`[data-sms-panel="${tab.dataset.sms}"]`).classList.add('active')
+      })
+    })
+
+    // Placeholder click → insert at cursor
+    document.querySelectorAll('.sms-placeholders').forEach(container => {
+      container.addEventListener('click', (e) => {
+        const ph = e.target.closest('.sms-placeholder')
+        if (!ph) return
+        const ta = document.getElementById(container.dataset.target)
+        if (!ta) return
+        const start = ta.selectionStart
+        const end = ta.selectionEnd
+        const text = ta.value
+        ta.value = text.slice(0, start) + ph.textContent + text.slice(end)
+        ta.focus()
+        const pos = start + ph.textContent.length
+        ta.setSelectionRange(pos, pos)
+        const type = container.dataset.target.replace('sms-', '')
+        smsUpdatePreview(type)
+      })
+    })
+
+    // Live preview on input
+    SMS_TYPES.forEach(type => {
+      const ta = document.getElementById(`sms-${type}`)
+      if (ta) {
+        ta.addEventListener('input', () => smsUpdatePreview(type))
+        smsUpdatePreview(type)
+      }
+    })
+
+    // Load saved templates from DB
+    {
+      const { data: templates } = await supabase.from('sms_templates')
+        .select('type, template')
+        .eq('client_id', session.user.id)
+      if (templates) {
+        for (const t of templates) {
+          const ta = document.getElementById(`sms-${t.type}`)
+          if (ta) { ta.value = t.template; smsUpdatePreview(t.type) }
+        }
+      }
+    }
+
+    // Save templates
+    document.getElementById('sms-save-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('sms-save-btn')
+      const msg = document.getElementById('sms-msg')
+      msg.className = 'field-msg'
+      btn.disabled = true; btn.textContent = 'Saving…'
+
+      const rows = SMS_TYPES.map(type => ({
+        client_id: session.user.id,
+        type,
+        template: document.getElementById(`sms-${type}`).value,
+        updated_at: new Date().toISOString(),
+      }))
+
+      const { error } = await supabase.from('sms_templates')
+        .upsert(rows, { onConflict: 'client_id,type' })
+
+      btn.disabled = false; btn.textContent = 'Save SMS Templates'
+      if (error) {
+        msg.textContent = error.message; msg.classList.add('error')
+      } else {
+        msg.textContent = '✓ SMS templates saved.'; msg.classList.add('success')
+        setTimeout(() => { msg.className = 'field-msg' }, 3000)
+      }
+    })
+
+    // Reset to defaults
+    document.getElementById('sms-reset-btn').addEventListener('click', () => {
+      if (!confirm('Reset all SMS templates to defaults?')) return
+      SMS_TYPES.forEach(type => {
+        const ta = document.getElementById(`sms-${type}`)
+        if (ta) { ta.value = SMS_DEFAULTS[type]; smsUpdatePreview(type) }
+      })
+    })
   </script>
 
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
@@ -506,6 +680,101 @@
             </div>
             <div class="field-msg" id="password-msg"></div>
           </form>
+        </div>
+      </div>
+
+      <!-- SMS Templates -->
+      <div class="card" style="max-width:700px;">
+        <div class="card-header">
+          <div class="card-header-icon">&#128172;</div>
+          <div>
+            <div class="card-title">SMS Messages</div>
+            <div class="card-sub">Customise the text messages sent to your customers. Click a placeholder to insert it.</div>
+          </div>
+        </div>
+        <div class="sms-tabs">
+          <button class="sms-tab active" data-sms="confirmation">Confirmation</button>
+          <button class="sms-tab" data-sms="reminder">Reminder</button>
+          <button class="sms-tab" data-sms="cancellation">Cancellation</button>
+          <button class="sms-tab" data-sms="reschedule">Reschedule</button>
+        </div>
+
+        <div class="sms-panel active" data-sms-panel="confirmation">
+          <label class="field-label">Sent when a customer books an appointment</label>
+          <textarea class="sms-textarea" id="sms-confirmation">Hi {first_name}! Your {service} at {business} is confirmed.
+📅 {date} at {time}
+To cancel: {cancel_link}</textarea>
+          <div class="sms-placeholders" data-target="sms-confirmation">
+            <span class="sms-placeholder">{first_name}</span>
+            <span class="sms-placeholder">{service}</span>
+            <span class="sms-placeholder">{business}</span>
+            <span class="sms-placeholder">{date}</span>
+            <span class="sms-placeholder">{time}</span>
+            <span class="sms-placeholder">{cancel_link}</span>
+          </div>
+          <div class="sms-char-count" id="sms-confirmation-count"></div>
+          <div class="sms-preview-label">Preview</div>
+          <div class="sms-preview" id="sms-confirmation-preview"></div>
+        </div>
+
+        <div class="sms-panel" data-sms-panel="reminder">
+          <label class="field-label">Sent 24 hours before the appointment</label>
+          <textarea class="sms-textarea" id="sms-reminder">Hi {first_name}! Reminder: your {service} at {business} is tomorrow.
+📅 {date} at {time}
+Need to cancel? {cancel_link}</textarea>
+          <div class="sms-placeholders" data-target="sms-reminder">
+            <span class="sms-placeholder">{first_name}</span>
+            <span class="sms-placeholder">{service}</span>
+            <span class="sms-placeholder">{business}</span>
+            <span class="sms-placeholder">{date}</span>
+            <span class="sms-placeholder">{time}</span>
+            <span class="sms-placeholder">{cancel_link}</span>
+          </div>
+          <div class="sms-char-count" id="sms-reminder-count"></div>
+          <div class="sms-preview-label">Preview</div>
+          <div class="sms-preview" id="sms-reminder-preview"></div>
+        </div>
+
+        <div class="sms-panel" data-sms-panel="cancellation">
+          <label class="field-label">Sent when you cancel a customer's booking</label>
+          <textarea class="sms-textarea" id="sms-cancellation">Hi {first_name}, your {service} at {business} on {date} at {time} has been cancelled.
+If you believe this is an error, please contact the business directly.</textarea>
+          <div class="sms-placeholders" data-target="sms-cancellation">
+            <span class="sms-placeholder">{first_name}</span>
+            <span class="sms-placeholder">{service}</span>
+            <span class="sms-placeholder">{business}</span>
+            <span class="sms-placeholder">{date}</span>
+            <span class="sms-placeholder">{time}</span>
+          </div>
+          <div class="sms-char-count" id="sms-cancellation-count"></div>
+          <div class="sms-preview-label">Preview</div>
+          <div class="sms-preview" id="sms-cancellation-preview"></div>
+        </div>
+
+        <div class="sms-panel" data-sms-panel="reschedule">
+          <label class="field-label">Sent when you reschedule a customer's booking</label>
+          <textarea class="sms-textarea" id="sms-reschedule">Hi {first_name}! Your {service} at {business} has been rescheduled.
+📅 New time: {date} at {time}
+To cancel: {cancel_link}</textarea>
+          <div class="sms-placeholders" data-target="sms-reschedule">
+            <span class="sms-placeholder">{first_name}</span>
+            <span class="sms-placeholder">{service}</span>
+            <span class="sms-placeholder">{business}</span>
+            <span class="sms-placeholder">{date}</span>
+            <span class="sms-placeholder">{time}</span>
+            <span class="sms-placeholder">{cancel_link}</span>
+          </div>
+          <div class="sms-char-count" id="sms-reschedule-count"></div>
+          <div class="sms-preview-label">Preview</div>
+          <div class="sms-preview" id="sms-reschedule-preview"></div>
+        </div>
+
+        <div style="padding: 0 20px 20px;">
+          <div class="btn-row">
+            <button type="button" class="btn-save" id="sms-save-btn">Save SMS Templates</button>
+            <button type="button" class="btn-danger" id="sms-reset-btn" style="font-size:0.78rem;">Reset to defaults</button>
+          </div>
+          <div class="field-msg" id="sms-msg"></div>
         </div>
       </div>
 

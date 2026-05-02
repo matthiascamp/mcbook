@@ -44,20 +44,45 @@ Deno.serve(async (req: Request) => {
 
     const { data: booking, error } = await supabase
       .from('bookings')
-      .select('id, date, time, status, clients(business_name), customers(name), services(name)')
+      .select('id, date, time, status, client_id, clients(business_name), customers(name), services(name)')
       .eq('id', id)
       .single()
 
     if (error || !booking) return json({ error: 'Booking not found' }, 404)
 
+    // Fetch cancellation deadline setting
+    let minCancelHours = 4
+    const clientId = (booking as any).client_id
+    if (clientId) {
+      const { data: settings } = await supabase
+        .from('booking_settings')
+        .select('min_cancel_hours')
+        .eq('client_id', clientId)
+        .maybeSingle()
+      if (settings?.min_cancel_hours != null) minCancelHours = settings.min_cancel_hours
+    }
+
+    // Check if cancellation is still allowed (only for active bookings)
+    let cancelBlocked = false
+    const bStatus = (booking as any).status
+    if (['scheduled', 'confirmed', 'pending_payment'].includes(bStatus) && minCancelHours > 0) {
+      const bookingDateTime = new Date(`${(booking as any).date}T${(booking as any).time}`)
+      const deadlineMs = minCancelHours * 60 * 60 * 1000
+      if (bookingDateTime.getTime() - Date.now() < deadlineMs) {
+        cancelBlocked = true
+      }
+    }
+
     return json({
-      id:           (booking as any).id,
-      status:       (booking as any).status,
-      date:         (booking as any).date,
-      time:         (booking as any).time,
-      customerName: (booking as any).customers?.name ?? '',
-      serviceName:  (booking as any).services?.name ?? '',
-      businessName: (booking as any).clients?.business_name ?? '',
+      id:             (booking as any).id,
+      status:         (booking as any).status,
+      date:           (booking as any).date,
+      time:           (booking as any).time,
+      customerName:   (booking as any).customers?.name ?? '',
+      serviceName:    (booking as any).services?.name ?? '',
+      businessName:   (booking as any).clients?.business_name ?? '',
+      cancelBlocked,
+      minCancelHours,
     })
   }
 
@@ -74,7 +99,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: booking, error: fetchErr } = await supabase
         .from('bookings')
-        .select('id, status')
+        .select('id, status, date, time, client_id')
         .eq('id', bookingId)
         .single()
 
@@ -84,6 +109,25 @@ Deno.serve(async (req: Request) => {
       if (status === 'cancelled') return json({ error: 'already_cancelled' }, 422)
       if (!['scheduled', 'confirmed', 'pending_payment'].includes(status)) {
         return json({ error: 'This booking cannot be cancelled online.' }, 422)
+      }
+
+      // Enforce cancellation deadline
+      const clientId = (booking as any).client_id
+      let minCancelHours = 4
+      if (clientId) {
+        const { data: settings } = await supabase
+          .from('booking_settings')
+          .select('min_cancel_hours')
+          .eq('client_id', clientId)
+          .maybeSingle()
+        if (settings?.min_cancel_hours != null) minCancelHours = settings.min_cancel_hours
+      }
+      if (minCancelHours > 0) {
+        const bookingDateTime = new Date(`${(booking as any).date}T${(booking as any).time}`)
+        const deadlineMs = minCancelHours * 60 * 60 * 1000
+        if (bookingDateTime.getTime() - Date.now() < deadlineMs) {
+          return json({ error: 'cancel_deadline_passed', minCancelHours }, 422)
+        }
       }
 
       const { error: updateErr } = await supabase

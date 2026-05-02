@@ -179,11 +179,7 @@
         return
       }
 
-      // Show booking details and cancel button
-      title.textContent = 'Cancel your booking?'
-      sub.textContent   = 'Please confirm you want to cancel the following booking.'
-      icon.textContent  = '📅'
-
+      // Show booking details
       details.style.display = ''
       details.innerHTML = `
         <div class="detail-row"><span class="detail-label">Name</span><span class="detail-val">${esc(data.customerName)}</span></div>
@@ -192,6 +188,22 @@
         <div class="detail-row"><span class="detail-label">Time</span><span class="detail-val">${fmtTime(data.time)}</span></div>
         <div class="detail-row"><span class="detail-label">Business</span><span class="detail-val">${esc(data.businessName)}</span></div>
       `
+
+      // Check if cancellation deadline has passed
+      if (data.cancelBlocked) {
+        const hrs = data.minCancelHours
+        title.textContent = 'Too late to cancel online'
+        sub.textContent   = `Cancellations must be made at least ${hrs} hour${hrs === 1 ? '' : 's'} before the appointment. Please contact the business directly to cancel.`
+        icon.className    = 'icon warning'
+        icon.textContent  = '!'
+        btnBack.style.display = 'block'
+        return
+      }
+
+      // Show cancel button
+      title.textContent = 'Cancel your booking?'
+      sub.textContent   = 'Please confirm you want to cancel the following booking.'
+      icon.textContent  = '📅'
 
       btnCancel.style.display = 'block'
       btnBack.style.display   = 'block'
@@ -213,6 +225,13 @@
             title.textContent    = 'Booking cancelled'
             sub.textContent      = 'Your booking has been successfully cancelled. We hope to see you again soon.'
             details.style.display = 'none'
+            btnCancel.style.display = 'none'
+          } else if (d.error === 'cancel_deadline_passed') {
+            const hrs = d.minCancelHours || 0
+            icon.className          = 'icon warning'
+            icon.textContent        = '!'
+            title.textContent       = 'Too late to cancel online'
+            sub.textContent         = `Cancellations must be made at least ${hrs} hour${hrs === 1 ? '' : 's'} before the appointment. Please contact the business directly.`
             btnCancel.style.display = 'none'
           } else {
             throw new Error(d.error || 'Cancellation failed')
