@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancel Booking — McBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #05050a;
+      background-image: radial-gradient(ellipse 60% 50% at 50% 40%, rgba(74,222,128,0.05) 0%, transparent 70%);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: -1;
+    }
+    .card {
+      background: #0f0f1a;
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px;
+      padding: 40px 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+    }
+    .icon {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      margin: 0 auto 20px;
+    }
+    .icon.info    { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.3); color: #4ade80; }
+    .icon.warning { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.3);  color: #ef4444; }
+    .icon.success { background: rgba(74,222,128,0.08); border: 1px solid #4ade80; color: #4ade80; }
+    h1 {
+      font-size: 1.1rem; font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .sub {
+      font-size: 0.84rem; color: #8b8b9e;
+      line-height: 1.6;
+    }
+    .details {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 20px 0;
+      text-align: left;
+    }
+    .detail-row {
+      display: flex; justify-content: space-between;
+      font-size: 0.84rem;
+      padding: 5px 0;
+    }
+    .detail-row:not(:last-child) {
+      border-bottom: 1px solid rgba(255,255,255,0.09);
+      padding-bottom: 9px; margin-bottom: 4px;
+    }
+    .detail-label { color: #8b8b9e; }
+    .detail-val   { font-weight: 600; }
+    .btn {
+      display: block; width: 100%;
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-family: inherit; font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; border: none;
+      transition: filter 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-cancel {
+      background: #ef4444; color: #ffffff;
+      margin-top: 8px;
+    }
+    .btn-cancel:not(:disabled):hover { filter: brightness(1.1); box-shadow: 0 0 20px rgba(239,68,68,0.3); transform: translateY(-1px); }
+    .btn-back {
+      background: rgba(255,255,255,0.06); color: #8b8b9e;
+      margin-top: 10px;
+    }
+    .btn-back:hover { background: rgba(255,255,255,0.1); }
+    .powered {
+      margin-top: 24px;
+      font-size: 0.68rem;
+      color: #55556a;
+      letter-spacing: 0.04em;
+    }
+    .powered span { color: #4ade80; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <div class="icon info" id="icon">&#128197;</div>
+  <h1 id="title">Loading…</h1>
+  <p class="sub" id="sub"></p>
+  <div class="details" id="details" style="display:none;"></div>
+  <button class="btn btn-cancel" id="btn-cancel" style="display:none;">Cancel my booking</button>
+  <button class="btn btn-back"   id="btn-back"   style="display:none;" onclick="history.back()">← Go back</button>
+  <div class="powered">Powered by <span>McBook</span></div>
+</div>
+
+<script>
+  const CANCEL_BOOKING_URL = 'https://uijudgnqawtvjyjuyuwo.supabase.co/functions/v1/cancel-booking'
+
+  const icon      = document.getElementById('icon')
+  const title     = document.getElementById('title')
+  const sub       = document.getElementById('sub')
+  const details   = document.getElementById('details')
+  const btnCancel = document.getElementById('btn-cancel')
+  const btnBack   = document.getElementById('btn-back')
+
+  function fmtDate(iso) {
+    return new Date(iso + 'T00:00:00').toLocaleDateString('en-AU', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    })
+  }
+  function fmtTime(hhMM) {
+    const [h, m] = hhMM.split(':').map(Number)
+    const ampm = h >= 12 ? 'PM' : 'AM'
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`
+  }
+
+  const params    = new URLSearchParams(window.location.search)
+  const bookingId = params.get('id')
+
+  async function init() {
+    if (!bookingId) {
+      title.textContent = 'Invalid link'
+      sub.textContent   = 'This cancellation link is missing a booking ID. Please check the link in your SMS.'
+      icon.className    = 'icon warning'
+      icon.textContent  = '✕'
+      return
+    }
+
+    // Fetch booking details
+    try {
+      const res  = await fetch(CANCEL_BOOKING_URL + '?id=' + encodeURIComponent(bookingId))
+      const data = await res.json()
+
+      if (!res.ok || data.error) {
+        title.textContent = 'Booking not found'
+        sub.textContent   = data.error === 'Booking not found'
+          ? 'We couldn\'t find this booking. The link may be invalid or the booking may have already been removed.'
+          : (data.error || 'Something went wrong. Please contact the business directly.')
+        icon.className    = 'icon warning'
+        icon.textContent  = '✕'
+        return
+      }
+
+      if (data.status === 'cancelled') {
+        title.textContent = 'Already cancelled'
+        sub.textContent   = 'This booking has already been cancelled.'
+        icon.className    = 'icon warning'
+        icon.textContent  = '✕'
+        btnBack.style.display = 'block'
+        return
+      }
+
+      if (!['scheduled', 'confirmed', 'pending_payment'].includes(data.status)) {
+        title.textContent = 'Cannot cancel online'
+        sub.textContent   = `This booking has status "${data.status}" and cannot be cancelled via this link. Please contact the business directly.`
+        icon.className    = 'icon warning'
+        icon.textContent  = '!'
+        btnBack.style.display = 'block'
+        return
+      }
+
+      // Show booking details
+      details.style.display = ''
+      details.innerHTML = `
+        <div class="detail-row"><span class="detail-label">Name</span><span class="detail-val">${esc(data.customerName)}</span></div>
+        <div class="detail-row"><span class="detail-label">Service</span><span class="detail-val">${esc(data.serviceName)}</span></div>
+        <div class="detail-row"><span class="detail-label">Date</span><span class="detail-val">${fmtDate(data.date)}</span></div>
+        <div class="detail-row"><span class="detail-label">Time</span><span class="detail-val">${fmtTime(data.time)}</span></div>
+        <div class="detail-row"><span class="detail-label">Business</span><span class="detail-val">${esc(data.businessName)}</span></div>
+      `
+
+      // Check if cancellation deadline has passed
+      if (data.cancelBlocked) {
+        const hrs = data.minCancelHours
+        title.textContent = 'Too late to cancel online'
+        sub.textContent   = `Cancellations must be made at least ${hrs} hour${hrs === 1 ? '' : 's'} before the appointment. Please contact the business directly to cancel.`
+        icon.className    = 'icon warning'
+        icon.textContent  = '!'
+        btnBack.style.display = 'block'
+        return
+      }
+
+      // Show cancel button
+      title.textContent = 'Cancel your booking?'
+      sub.textContent   = 'Please confirm you want to cancel the following booking.'
+      icon.textContent  = '📅'
+
+      btnCancel.style.display = 'block'
+      btnBack.style.display   = 'block'
+
+      btnCancel.addEventListener('click', async () => {
+        btnCancel.disabled    = true
+        btnCancel.textContent = 'Cancelling…'
+        try {
+          const r = await fetch(CANCEL_BOOKING_URL, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ bookingId }),
+          })
+          const d = await r.json()
+
+          if (d.success || d.error === 'already_cancelled') {
+            icon.className       = 'icon success'
+            icon.textContent     = '✓'
+            title.textContent    = 'Booking cancelled'
+            sub.textContent      = 'Your booking has been successfully cancelled. We hope to see you again soon.'
+            details.style.display = 'none'
+            btnCancel.style.display = 'none'
+          } else if (d.error === 'cancel_deadline_passed') {
+            const hrs = d.minCancelHours || 0
+            icon.className          = 'icon warning'
+            icon.textContent        = '!'
+            title.textContent       = 'Too late to cancel online'
+            sub.textContent         = `Cancellations must be made at least ${hrs} hour${hrs === 1 ? '' : 's'} before the appointment. Please contact the business directly.`
+            btnCancel.style.display = 'none'
+          } else {
+            throw new Error(d.error || 'Cancellation failed')
+          }
+        } catch (err) {
+          btnCancel.disabled    = false
+          btnCancel.textContent = 'Cancel my booking'
+          sub.textContent       = (err.message || 'Something went wrong.') + ' Please try again or contact the business directly.'
+          icon.className        = 'icon warning'
+          icon.textContent      = '!'
+        }
+      })
+    } catch (err) {
+      title.textContent = 'Connection error'
+      sub.textContent   = 'Could not load booking details. Please check your internet connection and try again.'
+      icon.className    = 'icon warning'
+      icon.textContent  = '!'
+    }
+  }
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+  }
+
+  init()
+</script>
+</body>
+</html>
