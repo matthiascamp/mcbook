@@ -64,7 +64,12 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS seating_area_id UUID
 -- ── 9. Cancellation deadline on booking_settings ────────────────────────────
 ALTER TABLE booking_settings ADD COLUMN IF NOT EXISTS min_cancel_hours INTEGER DEFAULT 4;
 
--- ── 10. SMS templates table ─────────────────────────────────────────────────
+-- ── 10. Terms & conditions text on booking_settings ─────────────────────────
+-- Optional free-text T&C that customers must accept before booking.
+-- NULL or empty = no T&C required.
+ALTER TABLE booking_settings ADD COLUMN IF NOT EXISTS terms_and_conditions TEXT;
+
+-- ── 11. SMS templates table ─────────────────────────────────────────────────
 -- Per-client custom SMS message templates. Falls back to hardcoded defaults
 -- when no row exists for a given type.
 -- Supported placeholders: {first_name}, {service}, {business}, {date}, {time}, {cancel_link}

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages — MCBook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #05050a;
+      --surface:     #0f0f1a;
+      --surface-2:   #141424;
+      --border:      rgba(255,255,255,0.09);
+      --border-2:    rgba(255,255,255,0.16);
+      --accent:      #4ade80;
+      --accent-dim:  rgba(74,222,128,0.75);
+      --accent-bg:   rgba(74,222,128,0.07);
+      --accent-glow: 0 0 12px rgba(74,222,128,0.15);
+      --text:        #ffffff;
+      --text-2:      #8b8b9e;
+      --text-3:      #55556a;
+      --danger:      #ef4444;
+      --success:     #4ade80;
+      --radius-sm:   8px;
+      --radius:      12px;
+      --sidebar-w:   228px;
+      --topbar-h:    60px;
+      --ease:        0.2s ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      background-image: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(74,222,128,0.04) 0%, transparent 60%);
+      color: var(--text); min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 100; overflow-y: auto;
+    }
+    .sidebar-logo { display: flex; align-items: center; gap: 9px; padding: 18px 18px 16px; border-bottom: 1px solid var(--border); text-decoration: none; }
+    .sidebar-logo-icon { width: 30px; height: 30px; background: var(--accent-bg); border: 1px solid rgba(74,222,128,0.2); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+    .sidebar-logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, #4ade80, #86efac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-section-label { padding: 18px 18px 5px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.2); }
+    .nav-link { display: flex; align-items: center; gap: 9px; padding: 9px 18px; color: var(--text-2); text-decoration: none; font-size: 0.835rem; font-weight: 500; letter-spacing: -0.01em; border-right: 2px solid transparent; transition: color var(--ease), background var(--ease), border-color var(--ease); }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .nav-link.active { color: var(--accent); background: var(--accent-bg); border-right-color: var(--accent); }
+    .nav-icon { width: 16px; text-align: center; font-size: 0.9rem; flex-shrink: 0; opacity: 0.75; }
+    .nav-link.active .nav-icon { opacity: 1; }
+    .sidebar-footer { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); }
+    .sidebar-user { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+    .sidebar-avatar { width: 30px; height: 30px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: var(--text-2); flex-shrink: 0; }
+    .sidebar-user-name { font-size: 0.8rem; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+    .sidebar-user-role { font-size: 0.7rem; color: var(--text-2); margin-top: 1px; }
+
+    /* ── Main ── */
+    .main { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { height: var(--topbar-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: -0.02em; }
+    .topbar-date  { font-size: 0.78rem; color: var(--text-2); }
+    .content { flex: 1; padding: 24px; }
+
+    /* ── Card ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; max-width: 700px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .card-header-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; }
+    .card-title { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.01em; }
+    .card-sub   { font-size: 0.73rem; color: var(--text-2); margin-top: 2px; }
+
+    /* ── Fields ── */
+    .field-label { display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+    .field-msg {
+      font-size: 0.78rem; border-radius: var(--radius-sm);
+      padding: 9px 12px; margin-top: 10px; display: none;
+    }
+    .field-msg.error   { display: block; color: var(--danger);  background: rgba(239,68,68,0.07);  border: 1px solid rgba(239,68,68,0.2); }
+    .field-msg.success { display: block; color: var(--success); background: rgba(74,222,128,0.07); border: 1px solid rgba(74,222,128,0.2); }
+
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+    .btn-save {
+      padding: 9px 20px; background: var(--accent); color: #050a08;
+      border: none; border-radius: 50px;
+      font-family: inherit; font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: filter var(--ease), box-shadow var(--ease), transform var(--ease);
+    }
+    .btn-save:hover { filter: brightness(1.08); box-shadow: 0 0 24px rgba(74,222,128,0.3); transform: translateY(-1px); }
+    .btn-save:disabled { opacity: 0.5; cursor: default; }
+    .btn-danger {
+      padding: 9px 18px; background: rgba(239,68,68,0.08); color: var(--danger);
+      border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: background var(--ease);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.15); }
+
+    /* ── SMS Templates ── */
+    .sms-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+    .sms-tab {
+      padding: 10px 16px; font-family: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--text-2); background: none; border: none; border-bottom: 2px solid transparent;
+      cursor: pointer; transition: color var(--ease), border-color var(--ease);
+    }
+    .sms-tab:hover { color: var(--text); }
+    .sms-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .sms-panel { display: none; padding: 20px; }
+    .sms-panel.active { display: block; }
+    .sms-textarea {
+      width: 100%; min-height: 100px; padding: 12px 14px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 0.84rem;
+      line-height: 1.6; resize: vertical; outline: none;
+      transition: border-color var(--ease), box-shadow var(--ease);
+    }
+    .sms-textarea:hover { border-color: rgba(74,222,128,0.3); }
+    .sms-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,222,128,0.08); }
+    .sms-placeholders {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+    }
+    .sms-placeholder {
+      padding: 3px 9px; font-size: 0.7rem; font-family: monospace;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--accent); cursor: pointer;
+      transition: background var(--ease);
+    }
+    .sms-placeholder:hover { background: var(--accent-bg); }
+    .sms-preview-label {
+      font-size: 0.7rem; font-weight: 600; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 0 6px;
+    }
+    .sms-preview {
+      padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-2);
+      line-height: 1.6; white-space: pre-wrap;
+    }
+    .sms-char-count {
+      font-size: 0.68rem; color: var(--text-3); margin-top: 6px; text-align: right;
+    }
+    .sms-char-count.warn { color: #f59e0b; }
+    .sms-char-count.over { color: var(--danger); }
+
+    /* ── Hamburger + overlay ── */
+    .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px; flex-shrink: 0; }
+    .hamburger:hover { background: rgba(255,255,255,0.06); }
+    .hamburger span { display: block; width: 18px; height: 2px; background: var(--text-2); border-radius: 2px; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 99; backdrop-filter: blur(2px); }
+    .sidebar-overlay.active { display: block; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; z-index: 200; }
+      .sidebar.open { transform: none; }
+      .main { margin-left: 0; }
+    }
+    @media (max-width: 480px) { .content { padding: 16px; } .card { max-width: 100%; } }
+  </style>
+</head>
+<body>
+
+  <script type="module">
+    import { requireAuth, signOut } from './js/auth.js'
+    import { supabase } from './js/supabase.js'
+
+    const session = await requireAuth()
+    if (!session) throw new Error('No session')
+
+    // ── Load profile ──────────────────────────────────────────────────────────
+    const { data: client } = await supabase
+      .from('clients')
+      .select('business_name')
+      .eq('id', session.user.id)
+      .single()
+
+    const bizName = client?.business_name ?? ''
+
+    // Populate sidebar
+    document.getElementById('sidebar-avatar').textContent = (bizName || 'MB').slice(0, 2).toUpperCase()
+    document.getElementById('sidebar-name').textContent   = bizName || session.user.email
+
+    // ── Topbar date ───────────────────────────────────────────────────────────
+    document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-AU', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    })
+
+    // ── SMS Templates ─────────────────────────────────────────────────────────
+    const SMS_TYPES = ['confirmation', 'reminder', 'cancellation', 'reschedule']
+    const SMS_DEFAULTS = {
+      confirmation: `Hi {first_name}! Your {service} at {business} is confirmed.\n📅 {date} at {time}\nTo cancel: {cancel_link}`,
+      reminder:     `Hi {first_name}! Reminder: your {service} at {business} is tomorrow.\n📅 {date} at {time}\nNeed to cancel? {cancel_link}`,
+      cancellation: `Hi {first_name}, your {service} at {business} on {date} at {time} has been cancelled.\nIf you believe this is an error, please contact the business directly.`,
+      reschedule:   `Hi {first_name}! Your {service} at {business} has been rescheduled.\n📅 New time: {date} at {time}\nTo cancel: {cancel_link}`,
+    }
+    const SMS_SAMPLE = {
+      '{first_name}': 'Sarah',
+      '{service}': 'Haircut & Blowdry',
+      '{business}': bizName || 'Your Business',
+      '{date}': 'Thursday, 15 May',
+      '{time}': '2:00 PM',
+      '{cancel_link}': 'https://matthiasdev.com/mcbook/cancel.html?id=...',
+    }
+
+    function smsPreview(template) {
+      let text = template
+      for (const [k, v] of Object.entries(SMS_SAMPLE)) {
+        text = text.replaceAll(k, v)
+      }
+      return text
+    }
+
+    function smsCharCount(type) {
+      const ta = document.getElementById(`sms-${type}`)
+      const countEl = document.getElementById(`sms-${type}-count`)
+      if (!ta || !countEl) return
+      const expanded = smsPreview(ta.value)
+      const len = expanded.length
+      countEl.textContent = `~${len} characters (${len <= 160 ? '1 SMS' : Math.ceil(len / 153) + ' SMS segments'})`
+      countEl.className = 'sms-char-count' + (len > 320 ? ' over' : len > 160 ? ' warn' : '')
+    }
+
+    function smsUpdatePreview(type) {
+      const ta = document.getElementById(`sms-${type}`)
+      const previewEl = document.getElementById(`sms-${type}-preview`)
+      if (!ta || !previewEl) return
+      previewEl.textContent = smsPreview(ta.value)
+      smsCharCount(type)
+    }
+
+    // Tab switching
+    document.querySelectorAll('.sms-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.sms-tab').forEach(t => t.classList.remove('active'))
+        document.querySelectorAll('.sms-panel').forEach(p => p.classList.remove('active'))
+        tab.classList.add('active')
+        document.querySelector(`[data-sms-panel="${tab.dataset.sms}"]`).classList.add('active')
+      })
+    })
+
+    // Placeholder click → insert at cursor
+    document.querySelectorAll('.sms-placeholders').forEach(container => {
+      container.addEventListener('click', (e) => {
+        const ph = e.target.closest('.sms-placeholder')
+        if (!ph) return
+        const ta = document.getElementById(container.dataset.target)
+        if (!ta) return
+        const start = ta.selectionStart
+        const end = ta.selectionEnd
+        const text = ta.value
+        ta.value = text.slice(0, start) + ph.textContent + text.slice(end)
+        ta.focus()
+        const pos = start + ph.textContent.length
+        ta.setSelectionRange(pos, pos)
+        const type = container.dataset.target.replace('sms-', '')
+        smsUpdatePreview(type)
+      })
+    })
+
+    // Live preview on input
+    SMS_TYPES.forEach(type => {
+      const ta = document.getElementById(`sms-${type}`)
+      if (ta) {
+        ta.addEventListener('input', () => smsUpdatePreview(type))
+        smsUpdatePreview(type)
+      }
+    })
+
+    // Load saved templates from DB
+    {
+      const { data: templates } = await supabase.from('sms_templates')
+        .select('type, template')
+        .eq('client_id', session.user.id)
+      if (templates) {
+        for (const t of templates) {
+          const ta = document.getElementById(`sms-${t.type}`)
+          if (ta) { ta.value = t.template; smsUpdatePreview(t.type) }
+        }
+      }
+    }
+
+    // Save templates
+    document.getElementById('sms-save-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('sms-save-btn')
+      const msg = document.getElementById('sms-msg')
+      msg.className = 'field-msg'
+      btn.disabled = true; btn.textContent = 'Saving…'
+
+      const rows = SMS_TYPES.map(type => ({
+        client_id: session.user.id,
+        type,
+        template: document.getElementById(`sms-${type}`).value,
+        updated_at: new Date().toISOString(),
+      }))
+
+      const { error } = await supabase.from('sms_templates')
+        .upsert(rows, { onConflict: 'client_id,type' })
+
+      btn.disabled = false; btn.textContent = 'Save Templates'
+      if (error) {
+        msg.textContent = error.message; msg.classList.add('error')
+      } else {
+        msg.textContent = '✓ SMS templates saved.'; msg.classList.add('success')
+        setTimeout(() => { msg.className = 'field-msg' }, 3000)
+      }
+    })
+
+    // Reset to defaults
+    document.getElementById('sms-reset-btn').addEventListener('click', () => {
+      if (!confirm('Reset all SMS templates to defaults?')) return
+      SMS_TYPES.forEach(type => {
+        const ta = document.getElementById(`sms-${type}`)
+        if (ta) { ta.value = SMS_DEFAULTS[type]; smsUpdatePreview(type) }
+      })
+    })
+
+    // ── Terms & Conditions ──────────────────────────────────────────────────
+    const termsInput = document.getElementById('terms-input')
+    const termsCount = document.getElementById('terms-count')
+
+    function updateTermsCount() {
+      const len = termsInput.value.length
+      termsCount.textContent = len > 0 ? `${len} characters` : ''
+      termsCount.className = 'sms-char-count'
+    }
+    termsInput.addEventListener('input', updateTermsCount)
+
+    // Load
+    {
+      const { data: bs } = await supabase.from('booking_settings')
+        .select('terms_and_conditions')
+        .eq('client_id', session.user.id)
+        .maybeSingle()
+      if (bs?.terms_and_conditions) {
+        termsInput.value = bs.terms_and_conditions
+        updateTermsCount()
+      }
+    }
+
+    // Save
+    document.getElementById('terms-save-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('terms-save-btn')
+      const msg = document.getElementById('terms-msg')
+      msg.className = 'field-msg'
+      btn.disabled = true; btn.textContent = 'Saving…'
+
+      const { error } = await supabase.from('booking_settings').upsert({
+        client_id: session.user.id,
+        terms_and_conditions: termsInput.value.trim() || null,
+      }, { onConflict: 'client_id' })
+
+      btn.disabled = false; btn.textContent = 'Save Terms'
+      if (error) {
+        msg.textContent = error.message; msg.classList.add('error')
+      } else {
+        msg.textContent = '✓ Terms & conditions saved.'; msg.classList.add('success')
+        setTimeout(() => { msg.className = 'field-msg' }, 3000)
+      }
+    })
+
+    // ── Sign out ──────────────────────────────────────────────────────────────
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="signout"]')) { e.preventDefault(); signOut() }
+    })
+  </script>
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <a href="dashboard.html" class="sidebar-logo">
+      <div class="sidebar-logo-icon">&#128197;</div>
+      <span class="sidebar-logo-text">MCBook</span>
+    </a>
+
+    <span class="nav-section-label">Main</span>
+    <a href="dashboard.html"  class="nav-link"><span class="nav-icon">&#9707;</span> Dashboard</a>
+    <a href="bookings.html"   class="nav-link"><span class="nav-icon">&#128203;</span> Bookings</a>
+    <a href="customers.html"  class="nav-link"><span class="nav-icon">&#128100;</span> Customers</a>
+
+    <span class="nav-section-label">Setup</span>
+    <a href="services.html"          class="nav-link"><span class="nav-icon">&#10024;</span> Services</a>
+    <a href="availability.html"      class="nav-link"><span class="nav-icon">&#128197;</span> Availability</a>
+    <a href="messages.html"          class="nav-link active"><span class="nav-icon">&#128172;</span> Messages</a>
+    <a href="stripe-onboarding.html" class="nav-link"><span class="nav-icon">&#128176;</span> Payouts</a>
+    <a href="embed.html"             class="nav-link"><span class="nav-icon">&#128279;</span> Share</a>
+
+    <span class="nav-section-label">Account</span>
+    <a href="settings.html" class="nav-link"><span class="nav-icon">&#9881;&#65039;</span> Settings</a>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar">MB</div>
+        <div>
+          <div class="sidebar-user-name" id="sidebar-name">Loading…</div>
+          <div class="sidebar-user-role">Business Owner</div>
+        </div>
+      </div>
+      <a href="#" class="nav-link" data-action="signout"><span class="nav-icon">&#10148;</span> Sign Out</a>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Open menu"><span></span><span></span><span></span></button>
+      <span class="topbar-title">Messages</span>
+      <div class="topbar-actions">
+        <span class="topbar-date" id="topbar-date"></span>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">&#128172;</div>
+          <div>
+            <div class="card-title">SMS Templates</div>
+            <div class="card-sub">Customise the text messages sent to your customers. Click a placeholder to insert it.</div>
+          </div>
+        </div>
+        <div class="sms-tabs">
+          <button class="sms-tab active" data-sms="confirmation">Confirmation</button>
+          <button class="sms-tab" data-sms="reminder">Reminder</button>
+          <button class="sms-tab" data-sms="cancellation">Cancellation</button>
+          <button class="sms-tab" data-sms="reschedule">Reschedule</button>
+        </div>
+
+        <div class="sms-panel active" data-sms-panel="confirmation">
+          <label class="field-label">Sent when a customer books an appointment</label>
+          <textarea class="sms-textarea" id="sms-confirmation">Hi {first_name}! Your {service} at {business} is confirmed.
+📅 {date} at {time}
+To cancel: {cancel_link}</textarea>
+          <div class="sms-placeholders" data-target="sms-confirmation">
+            <span class="sms-placeholder">{first_name}</span>
+            <span class="sms-placeholder">{service}</span>
+            <span class="sms-placeholder">{business}</span>
+            <span class="sms-placeholder">{date}</span>
+            <span class="sms-placeholder">{time}</span>
+            <span class="sms-placeholder">{cancel_link}</span>
+          </div>
+          <div class="sms-char-count" id="sms-confirmation-count"></div>
+          <div class="sms-preview-label">Preview</div>
+          <div class="sms-preview" id="sms-confirmation-preview"></div>
+        </div>
+
+        <div class="sms-panel" data-sms-panel="reminder">
+          <label class="field-label">Sent 24 hours before the appointment</label>
+          <textarea class="sms-textarea" id="sms-reminder">Hi {first_name}! Reminder: your {service} at {business} is tomorrow.
+📅 {date} at {time}
+Need to cancel? {cancel_link}</textarea>
+          <div class="sms-placeholders" data-target="sms-reminder">
+            <span class="sms-placeholder">{first_name}</span>
+            <span class="sms-placeholder">{service}</span>
+            <span class="sms-placeholder">{business}</span>
+            <span class="sms-placeholder">{date}</span>
+            <span class="sms-placeholder">{time}</span>
+            <span class="sms-placeholder">{cancel_link}</span>
+          </div>
+          <div class="sms-char-count" id="sms-reminder-count"></div>
+          <div class="sms-preview-label">Preview</div>
+          <div class="sms-preview" id="sms-reminder-preview"></div>
+        </div>
+
+        <div class="sms-panel" data-sms-panel="cancellation">
+          <label class="field-label">Sent when you cancel a customer's booking</label>
+          <textarea class="sms-textarea" id="sms-cancellation">Hi {first_name}, your {service} at {business} on {date} at {time} has been cancelled.
+If you believe this is an error, please contact the business directly.</textarea>
+          <div class="sms-placeholders" data-target="sms-cancellation">
+            <span class="sms-placeholder">{first_name}</span>
+            <span class="sms-placeholder">{service}</span>
+            <span class="sms-placeholder">{business}</span>
+            <span class="sms-placeholder">{date}</span>
+            <span class="sms-placeholder">{time}</span>
+          </div>
+          <div class="sms-char-count" id="sms-cancellation-count"></div>
+          <div class="sms-preview-label">Preview</div>
+          <div class="sms-preview" id="sms-cancellation-preview"></div>
+        </div>
+
+        <div class="sms-panel" data-sms-panel="reschedule">
+          <label class="field-label">Sent when you reschedule a customer's booking</label>
+          <textarea class="sms-textarea" id="sms-reschedule">Hi {first_name}! Your {service} at {business} has been rescheduled.
+📅 New time: {date} at {time}
+To cancel: {cancel_link}</textarea>
+          <div class="sms-placeholders" data-target="sms-reschedule">
+            <span class="sms-placeholder">{first_name}</span>
+            <span class="sms-placeholder">{service}</span>
+            <span class="sms-placeholder">{business}</span>
+            <span class="sms-placeholder">{date}</span>
+            <span class="sms-placeholder">{time}</span>
+            <span class="sms-placeholder">{cancel_link}</span>
+          </div>
+          <div class="sms-char-count" id="sms-reschedule-count"></div>
+          <div class="sms-preview-label">Preview</div>
+          <div class="sms-preview" id="sms-reschedule-preview"></div>
+        </div>
+
+        <div style="padding: 0 20px 20px;">
+          <div class="btn-row">
+            <button type="button" class="btn-save" id="sms-save-btn">Save Templates</button>
+            <button type="button" class="btn-danger" id="sms-reset-btn" style="font-size:0.78rem;">Reset to defaults</button>
+          </div>
+          <div class="field-msg" id="sms-msg"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">&#128220;</div>
+          <div>
+            <div class="card-title">Terms & Conditions</div>
+            <div class="card-sub">Customers must accept these terms before completing a booking. Leave empty to disable.</div>
+          </div>
+        </div>
+        <div style="padding:20px;">
+          <textarea class="sms-textarea" id="terms-input" style="min-height:160px;" placeholder="e.g. Cancellations must be made at least 24 hours in advance. Late arrivals of more than 15 minutes may result in the appointment being forfeited..."></textarea>
+          <div class="sms-char-count" id="terms-count"></div>
+          <div class="btn-row">
+            <button type="button" class="btn-save" id="terms-save-btn">Save Terms</button>
+          </div>
+          <div class="field-msg" id="terms-msg"></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    var _hbg = document.getElementById('hamburger'), _sb = document.querySelector('.sidebar'), _ov = document.getElementById('sidebar-overlay')
+    _hbg && _hbg.addEventListener('click', function() { _sb.classList.toggle('open'); _ov.classList.toggle('active') })
+    _ov  && _ov.addEventListener('click',  function() { _sb.classList.remove('open'); _ov.classList.remove('active') })
+  </script>
+</body>
+</html>

@@ -737,6 +737,21 @@
         margin-top: -2px;
       }
 
+      /* ── Terms & Conditions ── */
+      .bw-terms-wrap { margin: 10px 0 6px; }
+      .bw-terms-text {
+        max-height: 100px; overflow-y: auto;
+        font-size: 0.72rem; color: ${t.sub}; line-height: 1.55;
+        padding: 8px 10px; background: ${t.inputBg};
+        border: 1px solid ${t.border}; border-radius: 6px;
+        white-space: pre-wrap;
+      }
+      .bw-terms-label {
+        display: flex; align-items: flex-start; gap: 8px;
+        margin-top: 8px; font-size: 0.78rem; color: ${t.text}; cursor: pointer;
+      }
+      .bw-terms-label input { margin-top: 2px; accent-color: ${t.accent}; }
+
       /* ── Summary box ── */
       .bw-summary {
         background: ${t.surface};
@@ -1089,7 +1104,7 @@
               .eq('client_id', this.businessId)
               .eq('enabled', true),
             sb.from('booking_settings')
-              .select('slot_duration_mins, min_notice_hours, advance_window_weeks')
+              .select('slot_duration_mins, min_notice_hours, advance_window_weeks, terms_and_conditions')
               .eq('client_id', this.businessId)
               .limit(1)
               .maybeSingle(),
@@ -1113,6 +1128,7 @@
           this._minNoticeHours = settings?.min_notice_hours ?? 2;
           this._slotMins = settings?.slot_duration_mins ?? 30;
           this._advanceWindowWeeks = settings?.advance_window_weeks ?? 4;
+          this._termsAndConditions = settings?.terms_and_conditions || '';
           const areaCapTotal = (seatAreas || []).reduce((s, a) => s + (a.capacity || 0), 0);
           this._totalCapacity = areaCapTotal > 0 ? areaCapTotal : null;
           this._overrides = new Map((ovData || []).map(o => [o.date, o]));
@@ -1349,15 +1365,25 @@
 
       const confirmLabel = isRest ? 'Reserve' : 'Book';
 
+      const termsHtml = this._termsAndConditions ? `
+          <div class="bw-terms-wrap">
+            <div class="bw-terms-text">${this._termsAndConditions.replace(/</g,'&lt;')}</div>
+            <label class="bw-terms-label">
+              <input type="checkbox" id="bw-terms-cb">
+              <span>I agree to the terms &amp; conditions</span>
+            </label>
+          </div>` : '';
+
       if (!needsCard) {
         return `
           <div class="bw-step-title">Review &amp; Confirm</div>
           ${summaryRows}
           ${isRest ? '' : '<div style="font-size:0.77rem;opacity:0.65;margin-bottom:4px;">Payment is not collected online — please arrange payment directly with the business.</div>'}
+          ${termsHtml}
           <div class="bw-error" id="bw-confirm-err"></div>
           <div class="bw-btn-row">
             <button type="button" class="bw-btn bw-btn-secondary" id="bw-back">&larr; Back</button>
-            <button type="button" class="bw-btn bw-btn-primary" id="bw-next">${confirmLabel}</button>
+            <button type="button" class="bw-btn bw-btn-primary" id="bw-next" ${this._termsAndConditions ? 'disabled' : ''}>${confirmLabel}</button>
           </div>`;
       }
 
@@ -1411,10 +1437,11 @@
           </div>
           <div class="bw-secure-note">&#128274; Payments are encrypted and secured by Stripe.</div>
         </div>
+        ${termsHtml}
         <div class="bw-error" id="bw-confirm-err"></div>
         <div class="bw-btn-row">
           <button type="button" class="bw-btn bw-btn-secondary" id="bw-back">&larr; Back</button>
-          <button type="button" class="bw-btn bw-btn-primary" id="bw-next">${confirmLabel}</button>
+          <button type="button" class="bw-btn bw-btn-primary" id="bw-next" ${this._termsAndConditions ? 'disabled' : ''}>${confirmLabel}</button>
         </div>`;
     }
 
@@ -1482,10 +1509,20 @@
             if (nextBtn) nextBtn.disabled = true;
             mountStripeElements(this).then(() => {
               const btn = this.root.querySelector('#bw-next');
-              if (btn) btn.disabled = false;
+              // Only enable if T&C accepted (or no T&C)
+              const tcb = this.root.querySelector('#bw-terms-cb');
+              if (btn) btn.disabled = tcb ? !tcb.checked : false;
             }).catch(err => {
               const errEl = this.root.querySelector('#bw-confirm-err');
               if (errEl) { errEl.textContent = err.message; errEl.classList.add('visible'); }
+            });
+          }
+          // T&C checkbox toggles confirm button
+          const termsCb = this.root.querySelector('#bw-terms-cb');
+          if (termsCb) {
+            termsCb.addEventListener('change', () => {
+              const btn = this.root.querySelector('#bw-next');
+              if (btn) btn.disabled = !termsCb.checked;
             });
           }
           break;
