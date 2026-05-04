@@ -69,6 +69,17 @@ ALTER TABLE booking_settings ADD COLUMN IF NOT EXISTS min_cancel_hours INTEGER D
 -- NULL or empty = no T&C required.
 ALTER TABLE booking_settings ADD COLUMN IF NOT EXISTS terms_and_conditions TEXT;
 
+-- ── 10b. Unique constraint on booking_settings(client_id) ───────────────────
+-- Required for the UPSERT in availability.js to work. Without this, ON CONFLICT
+-- (client_id) fails and settings changes silently don't save.
+DELETE FROM booking_settings a
+USING booking_settings b
+WHERE a.client_id = b.client_id
+  AND a.created_at < b.created_at;
+
+ALTER TABLE booking_settings
+  ADD CONSTRAINT booking_settings_client_id_unique UNIQUE (client_id);
+
 -- ── 11. SMS templates table ─────────────────────────────────────────────────
 -- Per-client custom SMS message templates. Falls back to hardcoded defaults
 -- when no row exists for a given type.

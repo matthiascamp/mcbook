@@ -130,6 +130,8 @@ async function loadBookingSettings() {
     cancelSel.value = `${data.min_cancel_hours}`
   if (payToggle)
     payToggle.checked = data.require_payment === true
+  const tcText = document.getElementById('tc-text')
+  if (tcText) tcText.value = data.terms_and_conditions || ''
 
 }
 
@@ -416,6 +418,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelSel  = document.getElementById('cancel-deadline-sel')
     const payToggle  = document.getElementById('toggle-require-payment')
     const slotMins   = parseInt(slotSel?.value || '60')
+    const tcText = document.getElementById('tc-text')
     const { error } = await supabase.from('booking_settings').upsert({
       client_id:            uid,
       slot_duration_mins:   slotMins,
@@ -423,6 +426,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       min_notice_hours:     parseInt(noticeSel?.value  || '2'),
       min_cancel_hours:     parseInt(cancelSel?.value  || '4'),
       require_payment:      payToggle ? (payToggle.checked && !payToggle.disabled) : false,
+      terms_and_conditions: tcText?.value?.trim() || null,
     }, { onConflict: 'client_id' })
     if (error) { console.error(error); saveBtns[1].disabled = false; saveBtns[1].textContent = 'Save Changes'; return }
     // For restaurants, keep the Table Booking service duration in sync

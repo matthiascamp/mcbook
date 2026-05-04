@@ -237,6 +237,17 @@
       padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.875rem;
     }
     .slot-row:last-child { border-bottom: none; }
+    .tc-wrap { padding: 10px 0; }
+    .tc-wrap .slot-label { margin-bottom: 4px; }
+    .tc-wrap .slot-sub { margin-bottom: 8px; }
+    .tc-textarea {
+      width: 100%; min-height: 80px; padding: 10px; box-sizing: border-box;
+      background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-family: inherit; font-size: 0.84rem;
+      resize: vertical; outline: none; transition: border-color var(--ease);
+    }
+    .tc-textarea:focus { border-color: var(--accent); }
+    .tc-textarea::placeholder { color: var(--text-2); opacity: 0.7; }
     .slot-label { font-weight: 500; color: var(--text); }
     .slot-sub   { font-size: 0.76rem; color: var(--text-2); margin-top: 2px; }
     .stripe-lock-note {
@@ -663,6 +674,11 @@
                   <option value="16">16 hours</option>
                   <option value="24">24 hours</option>
                 </select>
+              </div>
+              <div class="tc-wrap">
+                <div class="slot-label">Terms &amp; conditions</div>
+                <div class="slot-sub">Customers must accept these before booking. Leave blank to disable.</div>
+                <textarea class="tc-textarea" id="tc-text" placeholder="Enter your terms and conditions…"></textarea>
               </div>
             </div>
           </div>
