@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
     // Fetch booking with related data
     const { data: booking, error } = await supabase
       .from('bookings')
-      .select('id, date, time, created_at, client_id, clients(business_name), customers(name, phone), services(name)')
+      .select('id, date, time, created_at, client_id, clients(business_name, notification_phone), customers(name, phone), services(name)')
       .eq('id', bookingId)
       .single()
 
@@ -117,6 +117,15 @@ Deno.serve(async (req: Request) => {
       .replace(/\{cancel_link\}/g, cancelUrl)
 
     await sendTwilioSMS(phone, message)
+
+    // Notify the client (business owner) about the new booking
+    const clientPhone = client?.notification_phone
+    if (clientPhone) {
+      const clientMsg = `New booking! ${customer?.name || 'A customer'} booked ${service?.name ?? 'an appointment'} on ${dateStr} at ${timeStr}.`
+      await sendTwilioSMS(clientPhone, clientMsg).catch(err => {
+        console.error('Client notification failed:', err)
+      })
+    }
 
     return json({ success: true })
   } catch (err) {

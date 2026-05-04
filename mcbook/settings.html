@@ -217,7 +217,7 @@
     // ── Load profile ──────────────────────────────────────────────────────────
     const { data: client } = await supabase
       .from('clients')
-      .select('business_name, email, business_mode')
+      .select('business_name, email, business_mode, notification_phone')
       .eq('id', session.user.id)
       .single()
 
@@ -232,6 +232,7 @@
     // Populate fields
     document.getElementById('email-display').value = currentEmail
     document.getElementById('biz-name-input').value = bizName
+    document.getElementById('notif-phone-input').value = client?.notification_phone ?? ''
 
     // ── Danger zone — business mode switch ───────────────────────────────────
     const modeLabel = m => m === 'restaurant' ? 'Restaurant' : 'Service Business'
@@ -323,6 +324,27 @@
         msg.textContent = '✓ Business name updated.'; msg.classList.add('success')
         document.getElementById('sidebar-name').textContent = name
         document.getElementById('sidebar-avatar').textContent = name.slice(0, 2).toUpperCase()
+        setTimeout(() => { msg.className = 'field-msg' }, 3000)
+      }
+    })
+
+    // ── Save notification phone ─────────────────────────────────────────────
+    document.getElementById('notif-phone-form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const btn   = document.getElementById('notif-phone-btn')
+      const msg   = document.getElementById('notif-phone-msg')
+      const phone = document.getElementById('notif-phone-input').value.trim()
+      msg.className = 'field-msg'
+      btn.disabled = true; btn.textContent = 'Saving…'
+      const { error } = await supabase.from('clients').update({
+        notification_phone: phone || null
+      }).eq('id', session.user.id)
+      btn.disabled = false; btn.textContent = 'Save'
+      if (error) {
+        msg.textContent = error.message; msg.classList.add('error')
+      } else {
+        msg.textContent = phone ? '✓ You will receive an SMS for each new booking.' : '✓ Booking notifications disabled.'
+        msg.classList.add('success')
         setTimeout(() => { msg.className = 'field-msg' }, 3000)
       }
     })
@@ -451,6 +473,30 @@
               <button type="submit" class="btn-save" id="biz-name-btn">Save</button>
             </div>
             <div class="field-msg" id="biz-name-msg"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Notification phone -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">&#128241;</div>
+          <div>
+            <div class="card-title">Notification Phone</div>
+            <div class="card-sub">Receive an SMS every time a customer places a booking.</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <form id="notif-phone-form">
+            <div class="field">
+              <label class="field-label" for="notif-phone-input">Mobile Number</label>
+              <input type="tel" class="field-input" id="notif-phone-input" placeholder="e.g. +61 412 345 678" autocomplete="tel">
+              <div class="field-hint">Include country code. Leave blank to disable booking notifications.</div>
+            </div>
+            <div class="btn-row">
+              <button type="submit" class="btn-save" id="notif-phone-btn">Save</button>
+            </div>
+            <div class="field-msg" id="notif-phone-msg"></div>
           </form>
         </div>
       </div>

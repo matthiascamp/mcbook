@@ -80,6 +80,10 @@ WHERE a.client_id = b.client_id
 ALTER TABLE booking_settings
   ADD CONSTRAINT booking_settings_client_id_unique UNIQUE (client_id);
 
+-- ── 10c. Notification phone on clients ──────────────────────────────────────
+-- Phone number where the client receives SMS when a new booking is placed.
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS notification_phone TEXT;
+
 -- ── 11. SMS templates table ─────────────────────────────────────────────────
 -- Per-client custom SMS message templates. Falls back to hardcoded defaults
 -- when no row exists for a given type.

@@ -1128,8 +1128,6 @@
           this._minNoticeHours = settings?.min_notice_hours ?? 2;
           this._slotMins = settings?.slot_duration_mins ?? 30;
           this._advanceWindowWeeks = settings?.advance_window_weeks ?? 4;
-          console.log('[MCBook debug] booking_settings row:', JSON.stringify(settings));
-          console.log('[MCBook debug] advance_window_weeks =', this._advanceWindowWeeks);
           this._termsAndConditions = settings?.terms_and_conditions || '';
           const areaCapTotal = (seatAreas || []).reduce((s, a) => s + (a.capacity || 0), 0);
           this._totalCapacity = areaCapTotal > 0 ? areaCapTotal : null;

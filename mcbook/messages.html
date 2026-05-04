@@ -198,6 +198,16 @@
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     })
 
+    // ── Fetch real data for preview ───────────────────────────────────────────
+    const [{ data: services }, { data: recentCustomer }] = await Promise.all([
+      supabase.from('services').select('name').eq('client_id', session.user.id).eq('active', true).limit(1),
+      supabase.from('customers').select('name').eq('client_id', session.user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    ])
+    const sampleService   = services?.[0]?.name || 'Appointment'
+    const sampleFirstName = (recentCustomer?.name || 'Sarah').split(' ')[0]
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1)
+    const sampleDate = tomorrow.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })
+
     // ── SMS Templates ─────────────────────────────────────────────────────────
     const SMS_TYPES = ['confirmation', 'reminder', 'cancellation', 'reschedule']
     const SMS_DEFAULTS = {
@@ -207,10 +217,10 @@
       reschedule:   `Hi {first_name}! Your {service} at {business} has been rescheduled.\n📅 New time: {date} at {time}\nTo cancel: {cancel_link}`,
     }
     const SMS_SAMPLE = {
-      '{first_name}': 'Sarah',
-      '{service}': 'Haircut & Blowdry',
+      '{first_name}': sampleFirstName,
+      '{service}': sampleService,
       '{business}': bizName || 'Your Business',
-      '{date}': 'Thursday, 15 May',
+      '{date}': sampleDate,
       '{time}': '2:00 PM',
       '{cancel_link}': 'https://matthiasdev.com/mcbook/cancel.html?id=...',
     }
